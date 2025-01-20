@@ -1,14 +1,13 @@
-import os
-import sys
-import zstandard
-
-
+import pandas as pd
+import zstandard as zstd
+import io
+import json 
+import re
 
 
 
 def preprocess(text):
-    ''' applies basic preprocessing, removes links, markdown, quotes'''
-    import re
+    ''' applies basic preprocessing to reddit comments, removes links, markdown, quotes'''
     # Matches any string that starts with '[' and ends with ']' followed by '(', any non-space character, and ')'
     url_pattern = r'\[(.+?)\]\(.*?\S.*?\)'
     # Replaces any matches with the captured text between the square brackets
@@ -20,30 +19,32 @@ def preprocess(text):
     text=text.replace('\\n', ' ').replace('\n', ' ').replace('\t',' ').replace('\\', ' ')
     return text
 
-def extract_zstd(filepath,func):
+def extract_zstd(filepath,func=None):
     '''scans a zstd archive to find comments according to a certain condition
     and puts them in a pandas dataframe
     TODO: generalize condition
     func: a function applied to a json entry. if it returns true, appends the object'''
-    import pandas as pd
-    import zstandard as zstd
-    import io
-    import json 
+    i=0
 
-    obj_list=[]
-    with open(filepath, 'rb') as fh:
+    with open(filepath, 'rb') as compressed_file:
         dctx = zstd.ZstdDecompressor(max_window_size=2147483648)
-        stream_reader = dctx.stream_reader(fh)
-        text_stream = io.TextIOWrapper(stream_reader, encoding='utf-8')
-        for line in text_stream:
-            # HANDLE OBJECT LOGIC HERE
-            obj = json.loads(line)
-            condition=func(obj)
-            if condition:
-                i=i+1
-                #print(obj)
-                obj_list.append(obj)
-                if i%1000==0:
-                    print (i, ' comments collected.')
-        df = pd.DataFrame(obj_list)
-    return df
+        with  dctx.stream_reader(compressed_file) as stream_reader:
+            text_stream = io.TextIOWrapper(stream_reader, encoding='utf-8')
+            for line in text_stream:
+                obj = json.loads(line)
+                if func is not None:
+                    condition=func(obj)
+                else:
+                    condition=True
+                if condition:
+                    i=i+1
+                    #print(obj)
+                    if i%1000==0:
+                        print (i, ' comments collected.')
+                    yield obj
+
+
+def unpack_zst(in_filepath,out_filepath):
+    dctx = zstd.ZstdDecompressor(max_window_size=2147483648)
+    with open(in_filepath, 'rb') as ifh, open(out_filepath, 'wb') as ofh:     
+        dctx.copy_stream(ifh, ofh,write_size=2**16)
