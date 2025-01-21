@@ -3,3 +3,6 @@ output/
 raw_data/
 cache_/
 praw.ini
+
+__pycache__
+processed_data
