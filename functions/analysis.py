@@ -9,6 +9,22 @@ def create_nx_graph(df:pd.DataFrame):
     G.add_edges_from([a for a in zip(df['id'],df['parent_id'].drop_duplicates().str.split('_').str[1])])
     return G
 
+def symmetryze_graph(G:nx.DiGraph):
+    G_sym = nx.Graph()
+    for u, v, data in G.edges(data=True):
+        weight = data.get('weight', 1)  # Default weight = 1 if missing
+
+        # Add edge with combined weights if it exists in the reverse direction
+        if G.has_edge(v, u):
+            reverse_weight = G[v][u].get('weight', 1)
+            total_weight = weight + reverse_weight
+        else:
+            total_weight = weight
+
+        G_sym.add_edge(u, v, weight=total_weight)
+        return G_sym
+    
+
 def generate_graph_figure(G:nx.DiGraph):
     pos=nx.get_node_attributes(G, "pos")
     
@@ -26,14 +42,15 @@ def generate_graph_figure(G:nx.DiGraph):
         ))
     hovertext=[f'Node {n}\nNeighbor={str(list(G.neighbors(n)))}' for n in G.nodes()]
     # Node trace
+    connectivity=([len([x for x in G.neighbors(n)] )for n in G.nodes])
     node_trace = go.Scatter(
         x=[pos[n][0] for n in G.nodes()],
         y=[pos[n][1] for n in G.nodes()],
-        text=[f'Node {n}' for n in G.nodes()],
+        #text=[f'{n}' for n in G.nodes()],
         mode='markers+text',
         hovertext=hovertext,
         hoverinfo='text',
-        marker=dict(size=10, color='blue')
+        marker=dict(size=10, color=connectivity)
     )
     
     # Return the figure
