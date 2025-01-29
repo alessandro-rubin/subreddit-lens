@@ -16,7 +16,7 @@ def preprocess(text):
     quote_pattern= r'\>(.+?)\\n\\n'
     text=re.sub(quote_pattern,'',text)
     #remove \n
-    text=text.replace('\\n', ' ').replace('\n', ' ').replace('\t',' ').replace('\\', ' ')
+    text=text.replace('\\n', ' ').replace('\n', ' ').replace('\t',' ').replace('\\', ' ').replace('&gt;','').strip()
     return text
 
 def extract_zstd(filepath,func=None):

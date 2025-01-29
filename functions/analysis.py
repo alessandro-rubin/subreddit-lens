@@ -2,6 +2,21 @@ import pandas as pd
 import networkx as nx
 import plotly.graph_objects as go
 
+
+def get_parent_author_username(df:pd.DataFrame):
+    "parent comment author username"
+    id_to_author = df.set_index('id')['author'].to_dict()
+    df['parent_author'] = df['parent_id'].str.split('_').str[1].map(id_to_author)
+
+
+def extract_interaction_graph(comment_df:pd.DataFrame):
+    "Creates a user interaction DiGraph from a reddit "
+    user_interactions = comment_df.groupby(['author','parent_author']).agg(**{'count':('id','count')}).reset_index()
+    G=nx.DiGraph()
+    G.add_edges_from([a for a in zip(user_interactions['author'],user_interactions['parent_author'],[{'weight': c} for c in user_interactions['count'] ])])
+
+    return G
+
 def create_nx_graph(df:pd.DataFrame):
     G=nx.DiGraph()
     G.add_nodes_from(df['id'])
@@ -9,7 +24,7 @@ def create_nx_graph(df:pd.DataFrame):
     G.add_edges_from([a for a in zip(df['id'],df['parent_id'].drop_duplicates().str.split('_').str[1])])
     return G
 
-def symmetryze_graph(G:nx.DiGraph):
+def symmetrize_graph(G:nx.DiGraph):
     G_sym = nx.Graph()
     for u, v, data in G.edges(data=True):
         weight = data.get('weight', 1)  # Default weight = 1 if missing
@@ -18,11 +33,14 @@ def symmetryze_graph(G:nx.DiGraph):
         if G.has_edge(v, u):
             reverse_weight = G[v][u].get('weight', 1)
             total_weight = weight + reverse_weight
+            delta = weight - reverse_weight
         else:
             total_weight = weight
+            delta = weight
 
-        G_sym.add_edge(u, v, weight=total_weight)
-        return G_sym
+        G_sym.add_edge(u, v, weight=total_weight,delta=delta)
+    return G_sym
+
     
 
 def generate_graph_figure(G:nx.DiGraph):
