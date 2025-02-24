@@ -21,7 +21,7 @@ def preprocess(text):
     text = re.sub(quote_pattern, '', text)
 
     # Remove line breaks and replace with spaces
-    text = re.sub(r'(\n|\t|\\|&amp;)', ' ', text).strip()
+    text = re.sub(r'(\n|\t|\\|&amp;|&gt;)', ' ', text).strip()
 
     return text
 
@@ -36,14 +36,18 @@ def extract_zstd(filepath,condition=None):
     Yields:
         dict: Each JSON object that meets the condition
     """
+    i=0
     with open(filepath, 'rb') as compressed_file:
         dctx = zstd.ZstdDecompressor(max_window_size=2147483648)
         with dctx.stream_reader(compressed_file) as stream_reader:
             # Read all content into a buffer
-            text_content = io.TextIOWrapper(stream_reader.read(), encoding='utf-8').text
-            for line in text_content.splitlines():
+            text_content = io.TextIOWrapper(stream_reader, encoding='utf-8')
+            for line in text_content:
                 obj = json.loads(line)
                 if condition is None or condition(obj):
+                    i=i+1
+                    if i%1000==0:
+                        print (i, ' comments collected.')
                     yield obj
 
 
