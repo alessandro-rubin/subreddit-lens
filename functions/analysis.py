@@ -1,7 +1,8 @@
 import pandas as pd
 import networkx as nx
 import plotly.graph_objects as go
-
+import numpy as np
+from scipy.stats import gaussian_kde
 
 def get_parent_author_username(df:pd.DataFrame):
     "parent comment author username"
@@ -41,7 +42,22 @@ def symmetrize_graph(G:nx.DiGraph):
         G_sym.add_edge(u, v, weight=total_weight,delta=delta)
     return G_sym
 
-    
+def compute_posting_habists_pdf(df:pd.DataFrame,author_list,x_grid):
+    df['created_dt']=pd.to_datetime(df['created_utc'], unit='s')
+    df['creaed_hour']=df['created_dt'].dt.hour
+    author_densities={}
+    for author in author_list:
+        # Extract hours for current author
+        author_hours = pd.to_datetime(df[df['author'] == author]['created_utc'], unit='s').dt.hour
+        
+        # Create mirrored data for periodic boundary conditions
+        mirrored_hours = np.concatenate([author_hours - 24, author_hours, author_hours + 24])
+        
+        # Calculate KDE with mirrored data
+        kde = gaussian_kde(mirrored_hours,bw_method=.05)
+        density = kde.evaluate(x_grid) * 3  # Multiply by 3 to account for mirrored data
+        author_densities[author] = density
+    return author_densities
 
 def generate_graph_figure(G:nx.DiGraph):
     pos=nx.get_node_attributes(G, "pos")
