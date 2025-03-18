@@ -3,6 +3,8 @@ import networkx as nx
 import plotly.graph_objects as go
 import numpy as np
 from scipy.stats import gaussian_kde
+from scipy.spatial.distance import jensenshannon
+
 
 def get_parent_author_username(df:pd.DataFrame):
     "parent comment author username"
@@ -41,6 +43,19 @@ def symmetrize_graph(G:nx.DiGraph):
 
         G_sym.add_edge(u, v, weight=total_weight,delta=delta)
     return G_sym
+
+def js_similarity(densities:dict):
+    item_list =densities.keys()
+    dim = len(densities.keys())
+    similarity_matrix = np.zeros((dim, dim))
+
+    for i, i1 in enumerate(item_list):
+        for j, i1 in enumerate(item_list):
+            # Compute Jensen-Shannon divergence (symmetric and bounded)
+            js_divergence = jensenshannon(densities[i1], densities[i1])
+            # Convert to similarity (higher values mean more similar)
+            similarity_matrix[i, j] = 1 - js_divergence
+    return similarity_matrix
 
 def compute_posting_habists_pdf(df:pd.DataFrame,author_list,x_grid):
     df['created_dt']=pd.to_datetime(df['created_utc'], unit='s')
