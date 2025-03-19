@@ -7,13 +7,15 @@ from scipy.spatial.distance import jensenshannon
 
 
 def get_parent_author_username(df:pd.DataFrame):
-    "parent comment author username"
+    """parent comment author username"""
     id_to_author = df.set_index('id')['author'].to_dict()
     df['parent_author'] = df['parent_id'].str.split('_').str[1].map(id_to_author)
 
 
 def extract_interaction_graph(comment_df:pd.DataFrame):
-    "Creates a user interaction DiGraph from a reddit "
+    """Creates a user interaction DiGraph from a reddit dataframe, where each node is a user
+    and the weight of the edge ('user_a', 'user_b') is the number of replies by user_a to comments of user_b"""
+
     user_interactions = comment_df.groupby(['author','parent_author']).agg(**{'count':('id','count')}).reset_index()
     G=nx.DiGraph()
     G.add_edges_from([a for a in zip(user_interactions['author'],user_interactions['parent_author'],[{'weight': c} for c in user_interactions['count'] ])])
