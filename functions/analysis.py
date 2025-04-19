@@ -52,9 +52,9 @@ def js_similarity(densities:dict):
     similarity_matrix = np.zeros((dim, dim))
 
     for i, i1 in enumerate(item_list):
-        for j, i1 in enumerate(item_list):
+        for j, j1 in enumerate(item_list):
             # Compute Jensen-Shannon divergence (symmetric and bounded)
-            js_divergence = jensenshannon(densities[i1], densities[i1])
+            js_divergence = jensenshannon(densities[i1], densities[j1])
             # Convert to similarity (higher values mean more similar)
             similarity_matrix[i, j] = 1 - js_divergence
     return similarity_matrix
