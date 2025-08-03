@@ -16,13 +16,16 @@ def extract_interaction_graph(comment_df:pd.DataFrame):
     """Creates a user interaction DiGraph from a reddit dataframe, where each node is a user
     and the weight of the edge ('user_a', 'user_b') is the number of replies by user_a to comments of user_b"""
 
-    user_interactions = comment_df.groupby(['author','parent_author']).agg(**{'count':('id','count')}).reset_index()
+    user_interactions = comment_df.groupby(['author','parent_author']).agg(**{'count':('id','count')}).reset_index() # type: ignore
     G=nx.DiGraph()
     G.add_edges_from([a for a in zip(user_interactions['author'],user_interactions['parent_author'],[{'weight': c} for c in user_interactions['count'] ])])
 
     return G
 
 def create_nx_graph(df:pd.DataFrame):
+    """Creates a directed graph from a dataframe with 'id', 'parent_id', and 'link_id' columns.
+    Each node is identified by 'id', and edges are created from 'parent_id' to 'id'.
+    """
     G=nx.DiGraph()
     G.add_nodes_from(df['id'])
     G.add_nodes_from(df['link_id'].drop_duplicates().str.split('_').str[1])
