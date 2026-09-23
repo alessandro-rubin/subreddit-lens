@@ -24,10 +24,14 @@ when completing roadmap items.
 src/subreddit_lens/
     __init__.py         Exports the public API.
     cli.py              Typer command-line entry point (`subreddit-lens`).
-    io/                 archives.py (zstd readers), parquet.py (load_comments).
+    config.py           Config dataclass and load_config() (TOML).
+    io/                 archives.py (zstd readers), schema.py (canonical
+                        columns, normalize), ingest.py (chunked zstd to
+                        Parquet), parquet.py (load_comments/submissions).
     text/               preprocessing.py: comment text cleaning.
     network/            threads.py (comment tree graph), users.py (user
-                        interaction graph), metrics.py (h-index).
+                        interaction graph), metrics.py (h-index,
+                        user_metrics), storage.py (GraphML save/load).
     temporal/           habits.py: KDE hourly activity, JS similarity.
     export/             threads.py: thread chains, prompt pairs, JSONL export.
     clustering/         spectral.py, hierarchical.py (adapted from
@@ -94,15 +98,23 @@ or `uv add --dev <pkg>`. Never use `!pip install` in notebooks.
 
 ## Data
 
-Data files are gitignored and must be added manually. The expected input is a
-zstandard-compressed newline-delimited JSON file of Reddit comments:
+Data files are gitignored and must be added manually. Inputs are
+zstandard-compressed newline-delimited JSON dumps named after the subreddit:
 
-    data/litigi_comments.zst
+    data/litigi_comments.zst       (required)
+    data/litigi_submissions.zst    (optional)
 
-Run `examples/litigi/02_data_loading.ipynb` to convert it to Parquet. The
-other notebooks read:
+`ingest_archive()` streams them to Parquet in chunks, normalised to the
+canonical schema in `io/schema.py` (`id` without type prefix, `parent_id` and
+`link_id` with it). `examples/litigi/02_data_loading.ipynb` does this for
+r/litigi using `examples/litigi/subreddit-lens.toml`. The other notebooks
+read:
 
     data/litigi_comments.parquet
+    data/litigi_submissions.parquet
+
+Comment and submission IDs are separate sequences on Reddit and can
+coincide: always resolve a parent through its type prefix, never by bare ID.
 
 Notebooks locate the repository root by searching upwards for
 `pyproject.toml` and build `DATA_DIR` / `OUTPUT_DIR` from it, so they work
@@ -135,8 +147,12 @@ platform-specific paths.
 - `01_scraping.ipynb` and `subreddit_lens.legacy` use the Pushshift API, which
   has been heavily restricted since mid-2023. Use Arctic Shift archives and
   `subreddit_lens.io.extract_zstd()` instead.
-- Replies to submission authors are missing from the user interaction graph
-  because submissions are not loaded yet (Phase 4 of `docs/ROADMAP.md`).
+- Replies to submission authors are only complete when submissions are
+  loaded (`get_parent_author(comments, submissions)`). Without them, the
+  author of a post is inferred from comments flagged `is_submitter`.
+- `07_network_analysis.ipynb` computes PageRank on `G.reverse()`, which ranks
+  users who reply to popular users; `user_metrics()` uses `G`, which ranks
+  users who receive replies.
 - By default `[deleted]` and `AutoModerator` are excluded from per-user
   analyses (`subreddit_lens.constants.DEFAULT_EXCLUDED_AUTHORS`).
 - Some example notebooks reference variables defined in removed or reordered

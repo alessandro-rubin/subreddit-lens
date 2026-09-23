@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase 4)
+- `ingest_archive()`: streams a zstd archive to Parquet in chunks with a
+  fixed schema, writing to a temporary file that is renamed on success.
+- Canonical schema for comments and submissions (`io/schema.py`):
+  `normalize()`, `SchemaError`, `strip_type_prefix()`. `load_comments()`
+  now validates and normalises its input; `load_submissions()` is new.
+- `get_parent_author(comments, submissions)`: top-level comments are
+  attributed to the author of the post, from submissions or, without them,
+  from comments flagged `is_submitter`. **The interaction graph gains the
+  replies to post authors.**
+- `Config` and `load_config()` for per-subreddit TOML settings (paths,
+  timezone, language, date range, excluded authors);
+  `examples/litigi/subreddit-lens.toml`.
+- `save_graph()` / `load_graph()` (GraphML).
+- `user_metrics()`: per-user replies sent/received, reciprocity, ego size,
+  PageRank, h-index and Louvain community in one DataFrame.
+
+### Fixed (Phase 4)
+- `get_parent_author` looked up submission parents ('t3_x') among comment
+  IDs, so a top-level reply could be credited to the author of an unrelated
+  comment with the same ID.
+
 ### Fixed
 - `js_similarity` used `jensenshannon` with the natural log, so similarity
   never went below `1 - sqrt(ln 2) ~ 0.17`. It now uses base 2 and is

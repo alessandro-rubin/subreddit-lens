@@ -1,6 +1,7 @@
-"""Graph construction and network metrics."""
+"""Graph construction, network metrics and graph storage."""
 
-from subreddit_lens.network.metrics import hindex
+from subreddit_lens.network.metrics import hindex, user_metrics
+from subreddit_lens.network.storage import load_graph, save_graph
 from subreddit_lens.network.threads import create_nx_graph
 from subreddit_lens.network.users import (
     extract_interaction_graph,
@@ -13,5 +14,8 @@ __all__ = [
     "extract_interaction_graph",
     "get_parent_author",
     "hindex",
+    "load_graph",
+    "save_graph",
     "symmetrize_graph",
+    "user_metrics",
 ]

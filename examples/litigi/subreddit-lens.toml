@@ -1,0 +1,10 @@
+# Configuration for the r/litigi example. Paths are relative to this file.
+subreddit = "litigi"
+timezone = "Europe/Rome"
+language = "it"
+data_dir = "../../data"
+output_dir = "../../output"
+# Optional date range (inclusive, UTC days):
+# start = 2020-01-01
+# end = 2024-12-31
+exclude_authors = ["[deleted]", "AutoModerator"]

@@ -237,38 +237,45 @@ Acceptance criteria:
 
 Goal: the package works for any subreddit and handles large archives.
 
-- [ ] 4.1 Canonical schema in `io/schema.py` for comments and submissions:
+- [x] 4.1 Canonical schema in `io/schema.py` for comments and submissions:
       `id`, `parent_id`, `link_id`, `author`, `created_utc`, `body` / `title`
       + `selftext`, `score`, `subreddit`, `is_submitter`. Normalise type
       prefixes (`t1_`, `t3_`) in one place. Validate on load (plain checks or
-      `pandera`).
-- [ ] 4.2 Ingest submissions as well as comments (Arctic Shift provides both).
+      `pandera`). Done with plain checks in `io/schema.py`.
+- [x] 4.2 Ingest submissions as well as comments (Arctic Shift provides both).
       With submission authors available, top-level replies get a
       `parent_author` (the OP) and are no longer dropped from the interaction
       graph. Fallback when only comments are available: infer the OP from
       comments with `is_submitter == True` in the same `link_id`.
-- [ ] 4.3 `Config` object (`config.py`, a dataclass or `pydantic-settings`):
+- [x] 4.3 `Config` object (`config.py`, a dataclass or `pydantic-settings`):
       subreddit, language, timezone, data directory, output directory,
-      excluded authors, date range. Loadable from a TOML file.
-- [ ] 4.4 Ingestion to Parquet in streaming chunks (write with `pyarrow`
+      excluded authors, date range. Loadable from a TOML file. Done with a
+      frozen dataclass and `tomllib` (no extra dependency).
+- [x] 4.4 Ingestion to Parquet in streaming chunks (write with `pyarrow`
       incrementally) so large dumps never need to fit in memory.
 - [ ] 4.5 Evaluate DuckDB (or Polars) for aggregation queries on Parquet
       (per-user counts, edge lists, time series). Keep the pandas API as the
       public interface; use DuckDB internally where it gives a clear speed or
       memory win. Measure on the litigi dataset before committing to it.
+      (Open: needs the real dataset to measure.)
 - [ ] 4.6 Language-aware text processing: `text/languages/it.py` and `en.py`
       with stopwords and stemmer choice; `preprocess(text, lang=...)`.
-- [ ] 4.7 Graph persistence: save and load interaction graphs as GraphML or
+      (Open: independent of the rest of Phase 4.)
+- [x] 4.7 Graph persistence: save and load interaction graphs as GraphML or
       Parquet edge lists so the app does not rebuild them on every run.
-- [ ] 4.8 Network metrics module: PageRank, h-index, degree/strength,
+      Done with GraphML (`save_graph`, `load_graph`), readable by Gephi.
+- [x] 4.8 Network metrics module: PageRank, h-index, degree/strength,
       reciprocity, community detection (`nx.community.louvain_communities`),
       per-user ego-network summaries. One function returns a tidy
-      per-user metrics DataFrame.
+      per-user metrics DataFrame. Done: `user_metrics()`.
 
 Acceptance criteria:
 - The full pipeline runs on at least two subreddits (r/litigi plus one
-  English-language subreddit) using only a config file.
+  English-language subreddit) using only a config file. (Pending: needs
+  real data; becomes a single command with Phase 5.)
 - Peak memory during ingestion stays bounded regardless of archive size.
+  (By construction: at most chunk_size records are held in memory; tested
+  with chunked writes.)
 
 ---
 

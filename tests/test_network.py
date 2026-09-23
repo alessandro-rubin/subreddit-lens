@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import networkx as nx
 import pandas as pd
 import pytest
@@ -11,7 +13,10 @@ from subreddit_lens.network import (
     extract_interaction_graph,
     get_parent_author,
     hindex,
+    load_graph,
+    save_graph,
     symmetrize_graph,
+    user_metrics,
 )
 
 
@@ -128,3 +133,99 @@ class TestHindex:
     def test_unknown_node_raises(self) -> None:
         with pytest.raises(nx.NetworkXError):
             hindex(nx.Graph(), "missing")
+
+
+class TestSubmitterReplies:
+    def test_top_level_replies_resolve_to_submitter(
+        self, comments_df: pd.DataFrame, submissions_df: pd.DataFrame
+    ) -> None:
+        df = get_parent_author(comments_df, submissions_df).set_index("id")
+        assert df.loc["c1", "parent_author"] == "dave"
+        assert df.loc["c8", "parent_author"] == "bob"  # OP commenting on own post
+        assert df.loc["c2", "parent_author"] == "alice"  # unchanged
+        assert pd.isna(df.loc["c9", "parent_author"])  # parent still missing
+
+    def test_replies_to_op_enter_the_graph(
+        self, comments_df: pd.DataFrame, submissions_df: pd.DataFrame
+    ) -> None:
+        G = extract_interaction_graph(get_parent_author(comments_df, submissions_df))
+        assert G["alice"]["dave"]["weight"] == 1
+
+    def test_fallback_on_is_submitter(
+        self, comments_with_submitter_df: pd.DataFrame
+    ) -> None:
+        df = get_parent_author(comments_with_submitter_df).set_index("id")
+        assert df.loc["c8", "parent_author"] == "bob"  # bob commented in s2
+        assert pd.isna(df.loc["c1", "parent_author"])  # dave never commented
+
+    def test_comment_and_submission_ids_do_not_collide(self) -> None:
+        # Regression: 't3_x' used to be looked up among comment IDs, so a
+        # top-level reply was credited to the author of comment 'x'.
+        df = pd.DataFrame(
+            {
+                "id": ["x", "y"],
+                "parent_id": ["t3_x", "t1_x"],
+                "link_id": ["t3_x", "t3_x"],
+                "author": ["u", "v"],
+            }
+        )
+        out = get_parent_author(df).set_index("id")
+        assert pd.isna(out.loc["x", "parent_author"])
+        assert out.loc["y", "parent_author"] == "u"
+
+
+class TestUserMetrics:
+    @pytest.fixture
+    def metrics(
+        self, comments_df: pd.DataFrame, submissions_df: pd.DataFrame
+    ) -> pd.DataFrame:
+        G = extract_interaction_graph(get_parent_author(comments_df, submissions_df))
+        return user_metrics(G)
+
+    def test_columns_and_index(self, metrics: pd.DataFrame) -> None:
+        assert metrics.index.name == "author"
+        assert set(metrics.index) == {"alice", "bob", "carol", "dave"}
+        assert metrics["pagerank"].is_monotonic_decreasing
+        assert metrics["pagerank"].sum() == pytest.approx(1.0)
+
+    def test_counts(self, metrics: pd.DataFrame) -> None:
+        alice = metrics.loc["alice"]
+        # alice -> bob (c4), alice -> carol (c10), alice -> dave (c1); the
+        # self-reply c7 is ignored.
+        assert alice["replies_sent"] == 3
+        assert alice["users_replied_to"] == 3
+        # bob -> alice (c2), carol -> alice (c3).
+        assert alice["replies_received"] == 2
+        assert alice["ego_size"] == 4 - 1  # bob, carol, dave
+        # Mutual with bob and carol, one-way with dave.
+        assert alice["reciprocity"] == pytest.approx(2 / 3)
+        assert metrics.loc["dave", "replies_sent"] == 0
+
+    def test_communities_are_numbered_by_size(self, metrics: pd.DataFrame) -> None:
+        sizes = metrics["community"].value_counts().sort_index()
+        assert list(sizes) == sorted(sizes, reverse=True)
+
+    def test_self_loop_only_user(self) -> None:
+        G: nx.DiGraph[str] = nx.DiGraph([("a", "b"), ("c", "c")])
+        metrics = user_metrics(G)
+        assert metrics.loc["c", "community"] == -1
+        assert pd.isna(metrics.loc["c", "reciprocity"])
+
+    def test_empty_graph(self) -> None:
+        assert user_metrics(nx.DiGraph()).empty
+
+
+def test_graph_round_trip(tmp_path: Path, comments_df: pd.DataFrame) -> None:
+    threads = create_nx_graph(comments_df)
+    users = symmetrize_graph(extract_interaction_graph(get_parent_author(comments_df)))
+    for G, name in [(threads, "threads.graphml"), (users, "users.graphml")]:
+        path = tmp_path / "graphs" / name
+        save_graph(G, path)
+        loaded = load_graph(path)
+        assert loaded.is_directed() == G.is_directed()
+        assert nx.utils.graphs_equal(loaded, G)
+
+
+def test_load_missing_graph(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_graph(tmp_path / "missing.graphml")

@@ -20,6 +20,10 @@ Thread s2:
         +-- c9 carol
             +-- c10 alice
 
+Submissions (submissions_df): s1 by dave, who never comments, and s2 by
+bob, who writes c8 (so c8 has is_submitter=True in
+comments_with_submitter_df).
+
 Timestamps are chosen so that local-time conversion is testable: c1 is
 posted at 22:30 UTC on 2024-07-01, which is 00:30 on 2024-07-02 in Rome
 (CEST, UTC+2).
@@ -55,3 +59,24 @@ def comments_df() -> pd.DataFrame:
     )
     df["created_utc"] = BASE + df.pop("minutes") * 60
     return df
+
+
+SUBMISSIONS = [
+    # id, author, title
+    ("s1", "dave", "Primo post"),
+    ("s2", "bob", "Secondo post"),
+]
+
+
+@pytest.fixture
+def submissions_df() -> pd.DataFrame:
+    """Submissions DataFrame for the two fixture threads."""
+    df = pd.DataFrame(SUBMISSIONS, columns=["id", "author", "title"])
+    df["created_utc"] = BASE - 3600
+    return df
+
+
+@pytest.fixture
+def comments_with_submitter_df(comments_df: pd.DataFrame) -> pd.DataFrame:
+    """Comments with the 'is_submitter' flag set by Reddit for OP comments."""
+    return comments_df.assign(is_submitter=comments_df["id"] == "c8")

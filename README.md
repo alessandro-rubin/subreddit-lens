@@ -57,28 +57,55 @@ uv run jupyter lab        # to run the example notebooks
 
 ## Quick start
 
+Describe the subreddit in a small TOML file (see
+`examples/litigi/subreddit-lens.toml`):
+
+```toml
+subreddit = "litigi"
+timezone = "Europe/Rome"
+language = "it"
+data_dir = "data"
+```
+
+Then:
+
 ```python
-from pathlib import Path
-
-import networkx as nx
-
 from subreddit_lens import (
     create_nx_graph,
     extract_interaction_graph,
     extract_thread_chains,
     get_parent_author,
+    ingest_archive,
     load_comments,
+    load_config,
+    load_submissions,
+    save_graph,
+    user_metrics,
 )
 
-df = load_comments(Path("data/litigi_comments.parquet"))
+config = load_config("subreddit-lens.toml")
 
-# Who replies to whom
-users = extract_interaction_graph(get_parent_author(df))
-influence = nx.pagerank(users.reverse(), weight="weight")
+# 1. Stream the archives to Parquet (memory use is bounded by chunk_size).
+ingest_archive(config.comments_archive, config.comments_parquet)
+ingest_archive(config.submissions_archive, config.submissions_parquet, "submissions")
 
-# Conversation chains
-threads = create_nx_graph(df)
-chains = extract_thread_chains(threads, df, min_length=2)
+comments = load_comments(config.comments_parquet)
+submissions = load_submissions(config.submissions_parquet)
+
+# 2. Who replies to whom, including replies to the author of each post.
+users = extract_interaction_graph(
+    get_parent_author(comments, submissions),
+    exclude_authors=config.exclude_authors,
+)
+save_graph(users, config.output_dir / "users.graphml")  # also opens in Gephi
+
+# 3. One row per user: replies sent/received, reciprocity, PageRank,
+#    h-index, community.
+metrics = user_metrics(users)
+
+# 4. Conversation chains.
+threads = create_nx_graph(comments)
+chains = extract_thread_chains(threads, comments, min_length=2)
 ```
 
 A command-line interface is being built; for now it only reports the
@@ -91,22 +118,31 @@ uv run subreddit-lens version
 ## Data
 
 Data files are not part of the repository. Download a subreddit's comments
-from the [Arctic Shift](https://github.com/ArthurHeitmann/arctic_shift)
-project as a zstd-compressed NDJSON file, place it in `data/`, and convert it
-with `examples/litigi/02_data_loading.ipynb`:
+and, optionally, submissions from the
+[Arctic Shift](https://github.com/ArthurHeitmann/arctic_shift) project as
+zstd-compressed NDJSON files and place them in the data directory, named
+after the subreddit:
 
 ```
-data/litigi_comments.zst      -> input archive
-data/litigi_comments.parquet  -> produced by 02_data_loading.ipynb
+data/litigi_comments.zst         -> required
+data/litigi_submissions.zst      -> optional, needed for replies to post authors
+data/litigi_comments.parquet     -> produced by ingest_archive()
+data/litigi_submissions.parquet  -> produced by ingest_archive()
 ```
+
+`examples/litigi/02_data_loading.ipynb` runs the ingestion for r/litigi.
+Without submissions, the author of a post is inferred from comments that
+Reddit flags with `is_submitter`, so replies to authors who never commented
+in their own thread are missing from the interaction graph.
 
 ## Repository layout
 
 ```
 src/subreddit_lens/   the package
-    io/               zstd archive and Parquet readers
+    config.py         per-subreddit settings (TOML)
+    io/               zstd archives, schema, chunked ingestion, Parquet readers
     text/             comment text cleaning
-    network/          thread graphs, user interaction graphs, metrics
+    network/          thread graphs, user interaction graphs, metrics, storage
     temporal/         posting-habit KDEs and similarity
     export/           thread chains and prompt/response pairs (JSONL)
     clustering/       spectral and hierarchical clustering helpers
