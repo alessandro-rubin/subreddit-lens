@@ -1,5 +1,7 @@
 """Tests for subreddit_lens.network."""
 
+from __future__ import annotations
+
 import networkx as nx
 import pandas as pd
 import pytest
@@ -87,7 +89,7 @@ class TestInteractionGraph:
 
 
 def test_symmetrize_graph() -> None:
-    G = nx.DiGraph()
+    G: nx.DiGraph[str] = nx.DiGraph()
     G.add_edge("a", "b", weight=3)
     G.add_edge("b", "a", weight=1)
     G.add_edge("a", "c", weight=2)
@@ -108,7 +110,7 @@ class TestHindex:
         assert hindex(nx.complete_graph(5), 0) == 4
 
     def test_isolated_node(self) -> None:
-        G = nx.Graph()
+        G: nx.Graph[str] = nx.Graph()
         G.add_node("a")
         assert hindex(G, "a") == 0
 

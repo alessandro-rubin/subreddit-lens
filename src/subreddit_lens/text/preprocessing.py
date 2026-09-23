@@ -23,11 +23,11 @@ _WHITESPACE_PATTERN = re.compile(r"\s+")
 
 
 def preprocess(text: str | None) -> str:
-    """Clean a raw Reddit comment body for NLP processing.
+    r"""Clean a raw Reddit comment body for NLP processing.
 
     Steps, in order:
 
-    1. Literal two-character '\\n' sequences, found in some older scrapes
+    1. Literal two-character '\n' sequences, found in some older scrapes
        where newlines were escaped, are turned into real newlines.
     2. HTML entities are decoded ('&gt;' becomes '>', '&amp;' becomes '&').
        Reddit bodies encode quote markers as '&gt;', so this must happen
@@ -35,7 +35,7 @@ def preprocess(text: str | None) -> str:
     3. Markdown quote blocks (a line starting with '>' up to the next blank
        line) are removed, since they repeat another user's text.
     4. Markdown links are replaced by their display text.
-    5. Markdown backslash escapes are removed ('\\*' becomes '*').
+    5. Markdown backslash escapes are removed ('\*' becomes '*').
     6. Whitespace is collapsed to single spaces.
 
     This function does not perform stemming, stopword removal, or
@@ -53,7 +53,7 @@ def preprocess(text: str | None) -> str:
     Examples:
         >>> preprocess("[link text](https://example.com)")
         'link text'
-        >>> preprocess("&gt; quoted line\\n\\nactual reply")
+        >>> preprocess("&gt; quoted line\n\nactual reply")
         'actual reply'
         >>> preprocess("Tom &amp; Jerry")
         'Tom & Jerry'

@@ -202,25 +202,33 @@ Goal: every change is automatically linted, type-checked and tested.
 - [x] 3.2 Unit tests for every public function: `io`, `network`, `temporal`,
       `text`, `export`. Include a round-trip test (zstd -> Parquet -> graph ->
       JSONL) on the fixture.
-- [ ] 3.3 `ruff` for lint and format (rule sets: `E`, `F`, `I`, `UP`, `B`,
-      `SIM`, `D` with Google convention, `NPY`, `PD`). Partly done: `E`,
-      `F`, `I`, `UP`, `B`, `SIM` are enabled on `src/` and `tests/`.
+- [x] 3.3 `ruff` for lint and format (rule sets: `E`, `F`, `I`, `UP`, `B`,
+      `SIM`, `D` with Google convention, `NPY`, `PD`), on `src/` and `tests/`.
 - [ ] 3.3b Lint the example notebooks (remove `examples` from ruff's
       `extend-exclude`). They currently have unused imports and undefined
       names left from Colab-era cell reordering (`stop` in 08, `df_pivot`
       in 05); fix them with a clean top-to-bottom re-run on real data.
-- [ ] 3.4 `mypy --strict` on `src/` (or `ty` once it is stable enough).
-- [ ] 3.5 `pre-commit` with ruff, nbstripout, end-of-file/trailing-whitespace
-      hooks.
-- [ ] 3.6 GitHub Actions workflow: on push and PR, run
+- [x] 3.4 `mypy --strict` on `src/` (or `ty` once it is stable enough).
+      Done on `src/` and `tests/`, with pandas, scipy and networkx stubs
+      pinned to the installed library versions.
+- [x] 3.5 `pre-commit` with ruff, nbstripout, end-of-file/trailing-whitespace
+      hooks. Ruff, mypy and nbstripout run as local hooks through `uv run`,
+      so they use the versions in `uv.lock`.
+- [x] 3.6 GitHub Actions workflow: on push and PR, run
       `uv sync --locked --all-extras`, `ruff check`, `ruff format --check`,
       `mypy`, `pytest --cov`. Matrix on Python 3.13 (add 3.12 if you decide to
-      lower `requires-python`).
-- [ ] 3.7 Coverage target: 80% on `src/subreddit_lens` (excluding `legacy/`
-      and `viz/`).
+      lower `requires-python`). As implemented (`.github/workflows/ci.yml`):
+      `uv sync --locked` without extras, since the tests do not need them
+      and the `sentiment` extra pulls in PyTorch; also builds the package
+      and checks that notebooks have no outputs. Runs on pushes to `main`
+      and on pull requests.
+- [x] 3.7 Coverage target: 80% on `src/subreddit_lens` (excluding `legacy/`
+      and `viz/`). Enforced by `fail_under` in `pyproject.toml`; currently
+      98% with branch coverage.
 
 Acceptance criteria:
-- CI is green on the default branch.
+- CI is green on the default branch. (Pending: the workflow runs for the
+  first time on the pull request.)
 - `uv run pytest` passes locally in under a minute.
 
 ---

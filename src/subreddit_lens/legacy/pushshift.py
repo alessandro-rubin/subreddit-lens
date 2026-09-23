@@ -50,7 +50,7 @@ def scrape_subreddit_comments(
         RuntimeError: If the Pushshift API returns no data.
     """
     try:
-        from pmaw import PushshiftAPI  # type: ignore[import]
+        from pmaw import PushshiftAPI
     except ImportError as exc:
         raise ImportError(
             "pmaw is not installed. Install it with: "

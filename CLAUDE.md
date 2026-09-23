@@ -65,8 +65,10 @@ This project uses [uv](https://docs.astral.sh/uv/) and requires Python 3.13.
 ```bash
 uv sync                   # core + dev group
 uv sync --all-extras      # everything used by the example notebooks
-uv run pytest
+uv run pre-commit install  # once: ruff, mypy, nbstripout on every commit
+uv run pytest --cov
 uv run ruff check && uv run ruff format --check
+uv run mypy
 uv run subreddit-lens --help
 uv run jupyter lab
 ```
@@ -84,8 +86,10 @@ Everything else is an optional extra in `pyproject.toml`:
 - `legacy` -- pmaw (01, `subreddit_lens.legacy`)
 - `all` -- all of the above except `legacy`
 
-Development tools (pytest, ruff, jupyterlab) are in the `dev` dependency
-group. Add dependencies with `uv add <pkg>`, `uv add --optional <extra> <pkg>`
+Development tools (pytest, pytest-cov, ruff, mypy with type stubs,
+pre-commit, nbstripout, jupyterlab) are in the `dev` dependency group. Keep
+`pandas-stubs` and `scipy-stubs` on the same minor version as the installed
+library. Add dependencies with `uv add <pkg>`, `uv add --optional <extra> <pkg>`
 or `uv add --dev <pkg>`. Never use `!pip install` in notebooks.
 
 ## Data
@@ -115,11 +119,16 @@ platform-specific paths.
 - New public functions are exported from their subpackage `__init__.py` and,
   when broadly useful, from `subreddit_lens/__init__.py` (`__all__`).
 - Every change to `src/` needs tests in `tests/`.
-- Code must pass `ruff check` and `ruff format --check`. The `examples/`
-  directory is currently excluded from ruff.
+- Code must pass `ruff check`, `ruff format --check` and `mypy` (strict,
+  on `src/` and `tests/`). The `examples/` directory is currently excluded
+  from ruff. CI (`.github/workflows/ci.yml`) runs the same checks.
+- Coverage must stay at or above 80% (`legacy/` and `viz/` excluded).
+- networkx graph classes are generic only for type checkers: annotate them
+  as `nx.DiGraph[str]` and add `from __future__ import annotations` to the
+  module, since `nx.DiGraph[str]` fails at runtime.
 - No emojis in code, docstrings, or documentation.
 - Notebooks are committed without outputs (they may contain usernames and
-  comment text).
+  comment text); the nbstripout pre-commit hook and CI enforce this.
 
 ## Known Issues
 

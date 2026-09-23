@@ -49,8 +49,9 @@ uv add "subreddit-lens[nlp,viz] @ git+https://github.com/alessandro-rubin/reddit
 git clone https://github.com/alessandro-rubin/reddit_stuff
 cd reddit_stuff
 uv sync --all-extras      # or pick extras: uv sync --extra viz
-uv run pytest
-uv run ruff check
+uv run pre-commit install # ruff, mypy and nbstripout on every commit
+uv run pytest --cov
+uv run ruff check && uv run mypy
 uv run jupyter lab        # to run the example notebooks
 ```
 

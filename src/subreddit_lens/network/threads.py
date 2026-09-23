@@ -5,6 +5,8 @@ edges pointing from parent to child (root-to-leaf direction). It is used for
 thread traversal and export via subreddit_lens.export.
 """
 
+from __future__ import annotations
+
 import networkx as nx
 import pandas as pd
 
@@ -19,7 +21,7 @@ def _strip_prefix(ids: pd.Series) -> pd.Series:
     return ids.str.split("_", n=1).str[-1]
 
 
-def create_nx_graph(df: pd.DataFrame) -> nx.DiGraph:
+def create_nx_graph(df: pd.DataFrame) -> nx.DiGraph[str]:
     """Build a directed comment thread graph with edges pointing parent to child.
 
     Each node is a comment ID or a submission ID (the Reddit type prefix such
@@ -53,7 +55,7 @@ def create_nx_graph(df: pd.DataFrame) -> nx.DiGraph:
     parent_ids = _strip_prefix(df["parent_id"])
     link_ids = _strip_prefix(df["link_id"])
 
-    G = nx.DiGraph()
+    G: nx.DiGraph[str] = nx.DiGraph()
     G.add_nodes_from(link_ids.drop_duplicates(), kind=SUBMISSION)
     G.add_nodes_from(comment_ids, kind=COMMENT)
 

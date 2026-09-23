@@ -64,7 +64,7 @@ class TestLoadComments:
 
 
 def test_round_trip(archive: Path, tmp_path: Path) -> None:
-    """zstd archive -> Parquet -> thread graph -> prompt pairs JSONL."""
+    """Round trip: zstd archive -> Parquet -> thread graph -> prompt pairs JSONL."""
     parquet = tmp_path / "comments.parquet"
     pd.DataFrame(list(extract_zstd(archive))).to_parquet(parquet)
 

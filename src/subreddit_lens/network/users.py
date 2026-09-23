@@ -5,6 +5,8 @@ relationships weighted by reply count. It is used for social network analysis
 and PageRank scoring.
 """
 
+from __future__ import annotations
+
 from collections.abc import Iterable
 
 import networkx as nx
@@ -37,7 +39,7 @@ def get_parent_author(df: pd.DataFrame) -> pd.DataFrame:
 def extract_interaction_graph(
     comment_df: pd.DataFrame,
     exclude_authors: Iterable[str] | None = DEFAULT_EXCLUDED_AUTHORS,
-) -> nx.DiGraph:
+) -> nx.DiGraph[str]:
     """Build a weighted directed user interaction graph from a comments DataFrame.
 
     Each node is a Reddit username. A directed edge (u -> v) with weight w
@@ -68,7 +70,7 @@ def extract_interaction_graph(
         .agg(count=("id", "count"))
         .reset_index()
     )
-    G = nx.DiGraph()
+    G: nx.DiGraph[str] = nx.DiGraph()
     G.add_edges_from(
         zip(
             user_interactions["author"],
@@ -80,7 +82,7 @@ def extract_interaction_graph(
     return G
 
 
-def symmetrize_graph(G: nx.DiGraph) -> nx.Graph:
+def symmetrize_graph(G: nx.DiGraph[str]) -> nx.Graph[str]:
     """Convert a directed graph to an undirected graph, merging antiparallel edges.
 
     For each pair of nodes (u, v) with edges in both directions, the
@@ -96,7 +98,7 @@ def symmetrize_graph(G: nx.DiGraph) -> nx.Graph:
     Returns:
         Undirected graph with 'weight' and 'delta' edge attributes.
     """
-    G_sym = nx.Graph()
+    G_sym: nx.Graph[str] = nx.Graph()
     for u, v, data in G.edges(data=True):
         weight = data.get("weight", 1)
         if G.has_edge(v, u):

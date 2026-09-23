@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   returned by `create_nx_graph`.
 - `Chain`, `ChainComment` and `PromptPair` TypedDicts in
   `subreddit_lens.export`.
+- Strict mypy, extended ruff rules (pydocstyle, NumPy, pandas), coverage
+  threshold (80%), pre-commit hooks (ruff, mypy, nbstripout) and a GitHub
+  Actions CI workflow.
 - Test suite with a synthetic fixture dataset (`tests/conftest.py`) covering
   every subpackage, including a zstd -> Parquet -> JSONL round trip.
 - Installable package `subreddit_lens` (src layout, `uv_build` backend).

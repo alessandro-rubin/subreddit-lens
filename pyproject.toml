@@ -47,8 +47,15 @@ Roadmap = "https://github.com/alessandro-rubin/reddit_stuff/blob/main/docs/ROADM
 [dependency-groups]
 dev = [
     "jupyterlab>=4.4",
+    "mypy>=2.3.1",
+    "nbstripout>=0.9.1",
+    "pandas-stubs>=2.3,<2.4",
+    "pre-commit>=4.6.2",
     "pytest>=8.4",
+    "pytest-cov>=7.1.0",
     "ruff>=0.12",
+    "scipy-stubs>=1.16,<1.17",
+    "types-networkx>=3.6.1.20260911",
 ]
 
 [build-system]
@@ -62,8 +69,48 @@ target-version = "py313"
 extend-exclude = ["examples"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
+select = ["E", "F", "I", "UP", "B", "SIM", "D", "NPY", "PD"]
+ignore = [
+    "D105",   # magic methods
+    "D107",   # __init__ (documented on the class)
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Test names describe the behaviour; docstrings on every test are noise.
+"tests/**" = ["D100", "D101", "D102", "D103"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+# No type information is published for these libraries.
+module = ["plotly.*", "pmaw.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Tests use fixtures and parametrised helpers; only require checked bodies.
+module = ["tests.*"]
+disallow_untyped_decorators = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["--import-mode=importlib"]
+
+[tool.coverage.run]
+source = ["subreddit_lens"]
+branch = true
+omit = [
+    "*/subreddit_lens/legacy/*",
+    "*/subreddit_lens/viz/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:"]

@@ -85,7 +85,7 @@ def compute_posting_habits_pdf(
     grouped = hours.groupby(df["author"])
 
     if author_list is None:
-        candidates = list(grouped.groups)
+        candidates = [str(a) for a in grouped.groups]
     else:
         candidates = [a for a in author_list if a in grouped.groups]
 

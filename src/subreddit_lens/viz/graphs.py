@@ -4,11 +4,15 @@ Provides interactive visualisations of NetworkX graphs using Plotly,
 suitable for display inside Jupyter notebooks or export to HTML.
 """
 
+from __future__ import annotations
+
+from collections.abc import Hashable
+
 import networkx as nx
 import plotly.graph_objects as go
 
 
-def generate_graph_figure(G: nx.Graph) -> go.Figure:
+def generate_graph_figure[N: Hashable](G: nx.Graph[N]) -> go.Figure:
     """Generate an interactive Plotly scatter-plot visualisation of a graph.
 
     Nodes must have a 'pos' attribute containing (x, y) coordinate tuples,

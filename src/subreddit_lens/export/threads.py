@@ -24,9 +24,11 @@ Typical usage:
     export_chains_to_jsonl(chains, Path("output/litigi_threads.jsonl"))
 """
 
+from __future__ import annotations
+
 import json
 import logging
-from collections.abc import Hashable, Iterable
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -62,7 +64,7 @@ class PromptPair(TypedDict):
     assistant: str
 
 
-def _root_nodes(G: nx.DiGraph) -> list[Hashable]:
+def _root_nodes(G: nx.DiGraph[str]) -> list[str]:
     """Return submission nodes, or in-degree-0 nodes for unlabelled graphs."""
     kinds = nx.get_node_attributes(G, "kind")
     if kinds:
@@ -71,7 +73,7 @@ def _root_nodes(G: nx.DiGraph) -> list[Hashable]:
 
 
 def extract_thread_chains(
-    G: nx.DiGraph,
+    G: nx.DiGraph[str],
     df: pd.DataFrame,
     min_length: int = 2,
 ) -> list[Chain]:
@@ -120,7 +122,7 @@ def extract_thread_chains(
         # Iterative DFS with an explicit stack to avoid hitting Python's
         # recursion limit (default 1000) on deeply nested comment trees.
         # Stack holds (current_node, path_so_far).
-        stack: list[tuple[Hashable, list[ChainComment]]] = [(root, [])]
+        stack: list[tuple[str, list[ChainComment]]] = [(root, [])]
 
         while stack:
             node, path = stack.pop()

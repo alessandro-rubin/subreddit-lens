@@ -1,11 +1,13 @@
 """Node-level metrics for user interaction graphs."""
 
+from __future__ import annotations
+
 from collections.abc import Hashable
 
 import networkx as nx
 
 
-def hindex(G: nx.Graph, node: Hashable) -> int:
+def hindex[N: Hashable](G: nx.Graph[N], node: N) -> int:
     """Compute the h-index of a node within a graph.
 
     The h-index of node n is the largest integer h such that n has at
@@ -29,11 +31,11 @@ def hindex(G: nx.Graph, node: Hashable) -> int:
     Raises:
         networkx.NetworkXError: If node is not in G.
     """
-    U = G.to_undirected(as_view=True) if G.is_directed() else G
+    U: nx.Graph[N] = G.to_undirected(as_view=True) if G.is_directed() else G
     if node not in U:
         raise nx.NetworkXError(f"Node {node!r} is not in the graph")
 
-    def distinct_degree(n: Hashable) -> int:
+    def distinct_degree(n: N) -> int:
         return sum(1 for m in U.neighbors(n) if m != n)
 
     neighbour_degrees = sorted(
