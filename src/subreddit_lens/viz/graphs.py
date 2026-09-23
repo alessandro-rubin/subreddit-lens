@@ -47,19 +47,20 @@ def generate_graph_figure[N: Hashable](G: nx.Graph[N]) -> go.Figure:
             "    nx.set_node_attributes(G, nx.spring_layout(G), 'pos')"
         )
 
-    edge_traces = []
-    for edge in G.edges():
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        edge_traces.append(
-            go.Scatter(
-                x=[x0, x1, None],
-                y=[y0, y1, None],
-                mode="lines",
-                line=dict(width=2, color="black"),
-                hoverinfo="none",
-            )
-        )
+    # All edges in one trace, separated by None: one trace per edge makes
+    # Plotly unusably slow beyond a few thousand edges.
+    edge_x: list[float | None] = []
+    edge_y: list[float | None] = []
+    for u, v in G.edges():
+        edge_x.extend([pos[u][0], pos[v][0], None])
+        edge_y.extend([pos[u][1], pos[v][1], None])
+    edge_trace = go.Scatter(
+        x=edge_x,
+        y=edge_y,
+        mode="lines",
+        line=dict(width=1, color="black"),
+        hoverinfo="none",
+    )
 
     connectivity = [G.degree(n) for n in G.nodes()]
     hovertext = [f"Node {n}<br>Neighbors: {list(G.neighbors(n))}" for n in G.nodes()]
@@ -73,7 +74,7 @@ def generate_graph_figure[N: Hashable](G: nx.Graph[N]) -> go.Figure:
     )
 
     return go.Figure(
-        data=edge_traces + [node_trace],
+        data=[edge_trace, node_trace],
         layout=go.Layout(
             showlegend=False,
             hovermode="closest",

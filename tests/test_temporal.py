@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from scipy.spatial.distance import jensenshannon
 
 from subreddit_lens.temporal import (
     compute_posting_habits_pdf,
@@ -87,6 +88,23 @@ class TestJensenShannon:
         # Regression: with the natural log the maximum was sqrt(ln 2) ~ 0.83.
         assert distances[0, 2] == pytest.approx(1.0)
         np.testing.assert_allclose(js_similarity(densities), 1 - distances)
+
+    def test_matches_scipy(self) -> None:
+        # The vectorised implementation must agree with scipy's pairwise
+        # jensenshannon(base=2), including arrays with zeros.
+        rng = np.random.default_rng(1)
+        arrays = rng.random((40, 24)) * (rng.random((40, 24)) > 0.3)
+        densities = {str(i): a for i, a in enumerate(arrays)}
+        distances = js_distance_matrix(densities)
+        for i in range(len(arrays)):
+            for j in range(len(arrays)):
+                expected = (
+                    0.0 if i == j else jensenshannon(arrays[i], arrays[j], base=2)
+                )
+                assert distances[i, j] == pytest.approx(expected, abs=1e-12)
+
+    def test_empty(self) -> None:
+        assert js_distance_matrix({}).shape == (0, 0)
 
     def test_matrix_properties(self) -> None:
         rng = np.random.default_rng(0)

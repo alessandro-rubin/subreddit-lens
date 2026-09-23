@@ -11,8 +11,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
-from scipy.spatial.distance import jensenshannon
-from scipy.stats import gaussian_kde
+from scipy.special import entr
 
 from subreddit_lens.constants import DEFAULT_EXCLUDED_AUTHORS
 
@@ -91,6 +90,10 @@ def compute_posting_habits_pdf(
     else:
         candidates = [a for a in author_list if a in eligible]
 
+    # Imported here: scipy.stats takes about 0.7 s to import and is only
+    # needed by this function, not by `import subreddit_lens` or the CLI.
+    from scipy.stats import gaussian_kde
+
     author_densities: dict[str, np.ndarray] = {}
     for author in candidates:
         author_hours = grouped.get_group(author).to_numpy(dtype=float)
@@ -112,10 +115,13 @@ def compute_posting_habits_pdf(
 def js_distance_matrix(densities: dict[str, np.ndarray]) -> np.ndarray:
     """Compute the pairwise Jensen-Shannon distance matrix of density arrays.
 
-    Uses scipy.spatial.distance.jensenshannon with base 2, which returns the
-    Jensen-Shannon *distance* (the square root of the divergence), a metric
-    bounded in [0, 1]. Each array is normalised to sum to 1 by scipy before
-    the comparison.
+    Returns the base-2 Jensen-Shannon *distance* (the square root of the
+    divergence), a metric bounded in [0, 1], with the same values as
+    scipy.spatial.distance.jensenshannon(p, q, base=2). Each array is
+    normalised to sum to 1 first. The computation is vectorised, using
+    JSD(p, q) = H((p + q) / 2) - (H(p) + H(q)) / 2 with H the Shannon
+    entropy, one row against all later rows at a time, so memory stays
+    O(n * len(array)).
 
     Args:
         densities: Dict mapping names to 1-D density arrays. All arrays must
@@ -125,13 +131,20 @@ def js_distance_matrix(densities: dict[str, np.ndarray]) -> np.ndarray:
         Symmetric numpy array of shape (n, n) with zeros on the diagonal. Row
         and column order matches the insertion order of densities.keys().
     """
-    arrays = list(densities.values())
-    n = len(arrays)
+    n = len(densities)
     distances = np.zeros((n, n))
-    for i in range(n):
-        for j in range(i + 1, n):
-            d = jensenshannon(arrays[i], arrays[j], base=2)
-            distances[i, j] = distances[j, i] = d
+    if n == 0:
+        return distances
+    p = np.asarray(list(densities.values()), dtype=float)
+    p = p / p.sum(axis=1, keepdims=True)
+    entropy = entr(p).sum(axis=1)
+    for i in range(n - 1):
+        mid_entropy = entr(0.5 * (p[i] + p[i + 1 :])).sum(axis=1)
+        divergence = mid_entropy - 0.5 * (entropy[i] + entropy[i + 1 :])
+        # Rounding can make identical rows slightly negative.
+        row = np.sqrt(np.maximum(divergence / np.log(2), 0.0))
+        distances[i, i + 1 :] = row
+        distances[i + 1 :, i] = row
     return distances
 
 

@@ -6,20 +6,16 @@ Shift archives). All file paths accept both strings and pathlib.Path objects.
 
 import io
 import json
-import logging
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
 import zstandard as zstd
 
-logger = logging.getLogger(__name__)
-
 
 def extract_zstd(
     filepath: str | Path,
     condition: Callable[[dict[str, Any]], bool] | None = None,
-    verbose: bool = False,
 ) -> Iterator[dict[str, Any]]:
     """Stream-process a zstd-compressed JSON-lines file, yielding matching objects.
 
@@ -32,8 +28,6 @@ def extract_zstd(
         condition: Optional callable that takes a dict and returns bool.
             Only objects for which condition returns True are yielded.
             If None, all objects are yielded.
-        verbose: If True, logs a progress message (level INFO) every 1000
-            yielded objects. Default is False.
 
     Yields:
         dict: Parsed JSON objects satisfying the condition.
@@ -47,7 +41,6 @@ def extract_zstd(
     if not filepath.exists():
         raise FileNotFoundError(f"Archive not found: {filepath}")
 
-    count = 0
     with open(filepath, "rb") as compressed_file:
         dctx = zstd.ZstdDecompressor(max_window_size=2_147_483_648)
         with dctx.stream_reader(compressed_file) as stream_reader:
@@ -57,7 +50,4 @@ def extract_zstd(
                     continue
                 obj = json.loads(line)
                 if condition is None or condition(obj):
-                    count += 1
-                    if verbose and count % 1000 == 0:
-                        logger.info("%d objects collected from %s", count, filepath)
                     yield obj
