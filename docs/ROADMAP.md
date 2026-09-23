@@ -97,8 +97,8 @@ any project, and `import subreddit_lens` works from any directory.
       - `[project.optional-dependencies]`:
         `nlp` (nltk, scikit-learn, stop-words),
         `sentiment` (transformers, torch, datasets, tqdm),
-        `embeddings` (sentence-transformers),
-        `viz` (pyvis, matplotlib, seaborn, wordcloud),
+        `embeddings` (sentence-transformers; later removed as unused),
+        `viz` (pyvis, matplotlib, seaborn; wordcloud later removed),
         `som` (minisom),
         `legacy` (pmaw),
         `app` (streamlit, added with Phase 6),

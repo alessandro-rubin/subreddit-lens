@@ -88,8 +88,7 @@ Everything else is an optional extra in `pyproject.toml`:
 
 - `nlp` -- nltk, scikit-learn, stop-words (04, 08)
 - `sentiment` -- transformers, torch, datasets, tqdm (05)
-- `embeddings` -- sentence-transformers
-- `viz` -- matplotlib, seaborn, pyvis, wordcloud (05, 06, 07, 08)
+- `viz` -- matplotlib, seaborn, pyvis (04, 06, 07, 08)
 - `som` -- minisom (08)
 - `legacy` -- pmaw (01, `subreddit_lens.legacy`)
 - `all` -- all of the above except `legacy`
@@ -163,8 +162,11 @@ platform-specific paths.
   users who receive replies.
 - By default `[deleted]` and `AutoModerator` are excluded from per-user
   analyses (`subreddit_lens.constants.DEFAULT_EXCLUDED_AUTHORS`).
-- Some example notebooks reference variables defined in removed or reordered
-  cells (e.g. `stop` in 08, `df_pivot` in 05); they need a clean re-run.
+- `06_posting_habits.ipynb` uses `sentiment` and `num_words` columns that
+  only exist in the output of `05_nlp.ipynb` (`output/out_sentiment.pickle`),
+  not in the Parquet file.
+- The example notebooks have not been re-run end to end on real data since
+  the restructuring (except 02 and 09 on synthetic data).
 
 ## Thread Export
 
