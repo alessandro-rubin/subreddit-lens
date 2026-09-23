@@ -1,0 +1,39 @@
+# Install once with: uv run pre-commit install
+# Run on all files:   uv run pre-commit run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1000"]
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  # Local hooks run the tool versions pinned in uv.lock, so pre-commit, CI and
+  # the editor always agree.
+  - repo: local
+    hooks:
+      - id: nbstripout
+        name: nbstripout (remove notebook outputs)
+        entry: uv run nbstripout
+        language: system
+        types: [jupyter]
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: mypy
+        name: mypy
+        entry: uv run mypy
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false

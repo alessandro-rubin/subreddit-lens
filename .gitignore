@@ -1,5 +1,25 @@
-litigi_comments.json
-output/
-raw_data/
-cache_/
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Tool caches
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Credentials
 praw.ini
+
+# Data and generated output (add files manually)
+/data/*
+!/data/.gitkeep
+/output/*
+!/output/.gitkeep
