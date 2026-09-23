@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed (cleanup)
+- `subreddit_lens.clustering` (`compute_laplacian`, `spectral_embedding`):
+  thin wrappers used only by `08_user_clustering.ipynb`, which now computes
+  the same quantities with NumPy and `sklearn.metrics.pairwise.rbf_kernel`
+  (verified to give identical results). `order_by_similarity` moved to
+  `subreddit_lens.viz`, next to `plot_similarity_matrix`, and is still
+  exported from `subreddit_lens`.
+
 ### Added (Phase 5)
 - Command-line interface: `subreddit-lens init | ingest | network | metrics
   | habits | export | run`, driven by the TOML config, with overrides such

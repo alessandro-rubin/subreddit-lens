@@ -166,7 +166,6 @@ src/subreddit_lens/   the package
     network/          thread graphs, user interaction graphs, metrics, storage
     temporal/         posting-habit KDEs and similarity
     export/           thread chains and prompt/response pairs (JSONL)
-    clustering/       spectral and hierarchical clustering helpers
     viz/              Plotly figures
     legacy/           old Pushshift scraper (unsupported)
     pipeline.py       pipeline steps driven by the config (used by the CLI)

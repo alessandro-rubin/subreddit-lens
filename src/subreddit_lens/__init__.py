@@ -13,7 +13,6 @@ Subpackages:
     network     Thread graphs, user interaction graphs, metrics, storage.
     temporal    KDE-based posting activity analysis, JS similarity.
     export      Thread tree traversal and JSONL export for training data.
-    clustering  Spectral and hierarchical clustering utilities.
     viz         Plotly figures for graphs and similarity matrices.
     legacy      Pushshift scraper (unsupported, non-functional since 2023).
 
@@ -30,11 +29,6 @@ Quick start:
 
 from importlib.metadata import PackageNotFoundError, version
 
-from subreddit_lens.clustering import (
-    compute_laplacian,
-    order_by_similarity,
-    spectral_embedding,
-)
 from subreddit_lens.config import Config, load_config
 from subreddit_lens.export import (
     chains_to_prompt_pairs,
@@ -66,7 +60,11 @@ from subreddit_lens.temporal import (
     local_hour,
 )
 from subreddit_lens.text import preprocess
-from subreddit_lens.viz import generate_graph_figure, plot_similarity_matrix
+from subreddit_lens.viz import (
+    generate_graph_figure,
+    order_by_similarity,
+    plot_similarity_matrix,
+)
 
 try:
     __version__ = version("subreddit-lens")
@@ -105,11 +103,8 @@ __all__ = [
     "export_chains_to_jsonl",
     "export_prompt_pairs_to_jsonl",
     "extract_thread_chains",
-    # clustering
-    "compute_laplacian",
-    "order_by_similarity",
-    "spectral_embedding",
     # viz
     "generate_graph_figure",
+    "order_by_similarity",
     "plot_similarity_matrix",
 ]
