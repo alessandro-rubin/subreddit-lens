@@ -9,8 +9,9 @@ in the NLP pipeline chosen for the analysis.
 import html
 import re
 
-# Markdown link: [display text](url)
-_LINK_PATTERN = re.compile(r"\[(.+?)\]\(.*?\S.*?\)")
+# Markdown link: [display text](url). The URL may contain one level of
+# balanced parentheses, as Wikipedia links often do: .../Diritto_(disambigua)
+_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\((?:[^()\s]|\([^()\s]*\))+\)")
 
 # Markdown quote block: a line starting with '>' and everything up to the next
 # blank line (Markdown lazy continuation) or the end of the text.

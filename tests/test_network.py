@@ -211,6 +211,15 @@ class TestUserMetrics:
         assert metrics.loc["c", "community"] == -1
         assert pd.isna(metrics.loc["c", "reciprocity"])
 
+    def test_hindex_column_matches_hindex(self) -> None:
+        # user_metrics() computes h-index from precomputed degrees; it must
+        # agree with hindex() on the same graph without self-loops.
+        random = nx.gnp_random_graph(60, 0.08, seed=1, directed=True)
+        G: nx.DiGraph[str] = nx.DiGraph((str(u), str(v)) for u, v in random.edges)
+        metrics = user_metrics(G)
+        for n in G.nodes:
+            assert metrics.loc[n, "hindex"] == hindex(G, n)
+
     def test_empty_graph(self) -> None:
         assert user_metrics(nx.DiGraph()).empty
 

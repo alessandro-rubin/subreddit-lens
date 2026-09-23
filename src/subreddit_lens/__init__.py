@@ -41,7 +41,6 @@ from subreddit_lens.io import (
     ingest_archive,
     load_comments,
     load_submissions,
-    unpack_zst,
 )
 from subreddit_lens.network import (
     create_nx_graph,
@@ -81,7 +80,6 @@ __all__ = [
     "ingest_archive",
     "load_comments",
     "load_submissions",
-    "unpack_zst",
     # text
     "preprocess",
     # network

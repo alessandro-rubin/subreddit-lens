@@ -133,6 +133,13 @@ class TestCli:
         assert "Run the ingest step first" in output
         assert "Traceback" not in output
 
+    def test_corrupt_archive(self, project: Path) -> None:
+        (project / "data" / "demo_comments.zst").write_bytes(b"not zstd data")
+        code, output = invoke(project, "ingest")
+        assert code == 1
+        assert "archive" in output
+        assert "Traceback" not in output
+
     def test_missing_config(self, tmp_path: Path) -> None:
         result = runner.invoke(
             app, ["network", "--config", str(tmp_path / "none.toml")]

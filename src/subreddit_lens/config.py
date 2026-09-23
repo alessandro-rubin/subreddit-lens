@@ -158,6 +158,17 @@ def _as_date(value: Any, key: str) -> date | None:
     raise ValueError(f"{key} must be a date (YYYY-MM-DD), got {value!r}")
 
 
+# Expected TOML value types; dates are checked by _as_date().
+_TOML_TYPES: dict[str, type] = {
+    "subreddit": str,
+    "data_dir": str,
+    "output_dir": str,
+    "timezone": str,
+    "language": str,
+    "exclude_authors": list,
+}
+
+
 def load_config(path: str | Path) -> Config:
     """Load a Config from a TOML file.
 
@@ -184,6 +195,13 @@ def load_config(path: str | Path) -> Config:
     unknown = sorted(set(raw) - known)
     if unknown:
         raise ValueError(f"Unknown keys in {path}: {unknown}")
+    for key, expected in _TOML_TYPES.items():
+        if key in raw and not isinstance(raw[key], expected):
+            raise ValueError(
+                f"{key} in {path} must be a {expected.__name__}, got {raw[key]!r}"
+            )
+    if not all(isinstance(a, str) for a in raw.get("exclude_authors", [])):
+        raise ValueError(f"exclude_authors in {path} must be a list of strings")
 
     base = path.parent
     kwargs: dict[str, Any] = dict(raw)

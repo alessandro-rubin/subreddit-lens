@@ -9,6 +9,12 @@ from subreddit_lens.text import preprocess
     ("raw", "expected"),
     [
         ("[link text](https://example.com)", "link text"),
+        # Regression: parentheses inside the URL left a stray ')'.
+        (
+            "vedi [Diritto](https://it.wikipedia.org/wiki/Diritto_(disambigua)) ok",
+            "vedi Diritto ok",
+        ),
+        ("[a](http://x.com) e [b](http://y.com)", "a e b"),
         ("Tom &amp; Jerry", "Tom & Jerry"),
         ("a &lt; b", "a < b"),
         # Quote blocks with real newlines (regression: the old pattern only

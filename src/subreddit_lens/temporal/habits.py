@@ -83,19 +83,17 @@ def compute_posting_habits_pdf(
     excluded = set(exclude_authors) if exclude_authors is not None else set()
     hours = local_hour(df["created_utc"], tz=tz)
     grouped = hours.groupby(df["author"])
+    sizes = grouped.size()
+    eligible = {str(a) for a in sizes.index[sizes >= min_posts]} - excluded
 
     if author_list is None:
-        candidates = [str(a) for a in grouped.groups]
+        candidates = sorted(eligible)
     else:
-        candidates = [a for a in author_list if a in grouped.groups]
+        candidates = [a for a in author_list if a in eligible]
 
     author_densities: dict[str, np.ndarray] = {}
     for author in candidates:
-        if author in excluded:
-            continue
         author_hours = grouped.get_group(author).to_numpy(dtype=float)
-        if len(author_hours) < min_posts:
-            continue
 
         mirrored_hours = np.concatenate(
             [
