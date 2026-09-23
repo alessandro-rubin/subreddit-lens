@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README, LICENSE (MIT), roadmap, smoke tests, ruff configuration.
 
 ### Changed
+- Dependencies upgraded to current releases: pandas 3.0, numpy 2.5,
+  scipy 1.18, networkx 3.7, plotly 7.1, pyarrow 25. Type stubs follow
+  (pandas-stubs 3.0, scipy-stubs 1.18). No code changes were needed; the
+  test suite passes with deprecation warnings treated as errors.
+- CI runs on pushes to `master` (the default branch), not `main`.
 - Package renamed from `functions` to `subreddit_lens` and split into
   subpackages (`io`, `text`, `network`, `temporal`, `export`, `clustering`,
   `viz`, `legacy`).
