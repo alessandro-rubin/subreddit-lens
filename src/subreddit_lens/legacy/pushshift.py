@@ -7,10 +7,13 @@ prefer downloading pre-archived .zst files from the Arctic Shift project
 subreddit_lens.io.extract_zstd().
 """
 
+import logging
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def scrape_subreddit_comments(
@@ -76,5 +79,5 @@ def scrape_subreddit_comments(
 
     output_path = Path(output_path).with_suffix(".parquet")
     comments.to_parquet(output_path)
-    print(f"Saved {len(comments)} comments to {output_path}")
+    logger.info("Saved %d comments to %s", len(comments), output_path)
     return comments

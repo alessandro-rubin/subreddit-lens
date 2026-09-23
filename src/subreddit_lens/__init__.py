@@ -48,7 +48,12 @@ from subreddit_lens.network import (
     hindex,
     symmetrize_graph,
 )
-from subreddit_lens.temporal import compute_posting_habits_pdf, js_similarity
+from subreddit_lens.temporal import (
+    compute_posting_habits_pdf,
+    js_distance_matrix,
+    js_similarity,
+    local_hour,
+)
 from subreddit_lens.text import preprocess
 from subreddit_lens.viz import generate_graph_figure, plot_similarity_matrix
 
@@ -73,7 +78,9 @@ __all__ = [
     "symmetrize_graph",
     # temporal
     "compute_posting_habits_pdf",
+    "js_distance_matrix",
     "js_similarity",
+    "local_hour",
     # export
     "chains_to_prompt_pairs",
     "export_chains_to_jsonl",

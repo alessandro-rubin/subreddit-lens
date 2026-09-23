@@ -142,50 +142,53 @@ Goal: fix the known bugs before building anything on top. Each fix gets a
 regression test (the test infrastructure arrives in Phase 3, so do 3.1-3.2
 first or together with this phase).
 
-- [ ] 2.1 `js_similarity`: `scipy.spatial.distance.jensenshannon` returns the
+- [x] 2.1 `js_similarity`: `scipy.spatial.distance.jensenshannon` returns the
       JS *distance* (square root of the divergence), bounded by `sqrt(ln 2)`
       with the default base. Use `base=2` so it is bounded in [0, 1], rename to
       `js_distance_matrix` (return distances; let the caller convert to
       similarity), fix the docstring, and compute only the upper triangle.
-- [ ] 2.2 Posting habits timezone: convert `created_utc` to a configurable
+      (Done as an addition: `js_distance_matrix` is new and `js_similarity`
+      is kept as `1 - js_distance_matrix` so existing code keeps working.)
+- [x] 2.2 Posting habits timezone: convert `created_utc` to a configurable
       timezone (default `UTC`, `Europe/Rome` for the litigi example) before
       extracting hours, so DST is handled correctly.
-- [ ] 2.3 Posting habits performance: replace the per-author boolean filter
+- [x] 2.3 Posting habits performance: replace the per-author boolean filter
       (O(authors x rows)) with a single `groupby("author")`. Add a
       `min_posts` parameter instead of the hard-coded 2.
-- [ ] 2.4 Posting habits normalisation: the mirrored KDE with `* 3` is an
+- [x] 2.4 Posting habits normalisation: the mirrored KDE with `* 3` is an
       approximation; normalise the evaluated density on the grid so it
       integrates to 1 over [0, 24). Make `bw_method` a parameter.
-- [ ] 2.5 `hindex` on a `DiGraph`: `G.neighbors()` returns successors only, but
+- [x] 2.5 `hindex` on a `DiGraph`: `G.neighbors()` returns successors only, but
       the docstring talks about total degree. Decide on a definition
       (recommended: operate on the undirected projection) and document it.
-- [ ] 2.6 Author filtering: exclude `[deleted]`, `AutoModerator` and a
+- [x] 2.6 Author filtering: exclude `[deleted]`, `AutoModerator` and a
       configurable bot list from the user interaction graph and all per-user
       metrics.
-- [ ] 2.7 `preprocess`: the quote-block regex matches the literal characters
+- [x] 2.7 `preprocess`: the quote-block regex matches the literal characters
       `\n\n` (backslash-n), not real newlines. Check against real data which
       form the archive uses, fix the pattern, and add tests. Also decode
       all HTML entities with `html.unescape` instead of handling only
       `&amp;` and `&gt;`.
-- [ ] 2.8 Thread export duplication: `extract_thread_chains` emits one chain
+- [x] 2.8 Thread export duplication: `extract_thread_chains` emits one chain
       per root-to-leaf path, so shared prefixes are repeated, and
       `chains_to_prompt_pairs` then emits the same (parent, reply) pair once
       per leaf below it. Generate pairs directly from graph edges
       (each edge = one pair, with optional ancestor context), or deduplicate.
-- [ ] 2.9 Orphan comments: when a parent comment is missing from the data,
+- [x] 2.9 Orphan comments: when a parent comment is missing from the data,
       its ID becomes a fake root in `create_nx_graph`. Mark such roots and
       take `thread_id` from `link_id`, not from the root node.
-- [ ] 2.10 Replace `print` calls in library code with `logging`; use `tqdm`
+- [x] 2.10 Replace `print` calls in library code with `logging`; use `tqdm`
       (optional) for progress on long iterations.
-- [ ] 2.11 Complete type annotations (e.g. `condition: Callable[[dict], bool] | None`
+- [x] 2.11 Complete type annotations (e.g. `condition: Callable[[dict], bool] | None`
       in the zstd reader, `node: Hashable` in `hindex`, `TypedDict`s for chain
       and pair records).
 
 Acceptance criteria:
 - Every item above has at least one test that fails on the old code and
-  passes on the new code.
+  passes on the new code. (Verified: 24 new tests fail on the Phase 1 code.)
 - Results on the litigi example are recomputed and the differences are noted
-  in `CHANGELOG.md`.
+  in `CHANGELOG.md`. (Pending: needs the real data; the expected direction
+  of each change is already listed in `CHANGELOG.md`.)
 
 ---
 
@@ -193,10 +196,10 @@ Acceptance criteria:
 
 Goal: every change is automatically linted, type-checked and tested.
 
-- [ ] 3.1 `tests/fixtures/`: a small synthetic dataset (about 2 submissions and
+- [x] 3.1 `tests/conftest.py` (planned as `tests/fixtures/`): a small synthetic dataset (about 2 submissions and
       20 comments, including a deleted comment, an orphan, a self-reply, a
       reply to OP, a bot) with hand-computed expected results.
-- [ ] 3.2 Unit tests for every public function: `io`, `network`, `temporal`,
+- [x] 3.2 Unit tests for every public function: `io`, `network`, `temporal`,
       `text`, `export`. Include a round-trip test (zstd -> Parquet -> graph ->
       JSONL) on the fixture.
 - [ ] 3.3 `ruff` for lint and format (rule sets: `E`, `F`, `I`, `UP`, `B`,

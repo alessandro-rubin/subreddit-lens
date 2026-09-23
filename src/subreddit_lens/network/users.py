@@ -5,8 +5,12 @@ relationships weighted by reply count. It is used for social network analysis
 and PageRank scoring.
 """
 
+from collections.abc import Iterable
+
 import networkx as nx
 import pandas as pd
+
+from subreddit_lens.constants import DEFAULT_EXCLUDED_AUTHORS
 
 
 def get_parent_author(df: pd.DataFrame) -> pd.DataFrame:
@@ -30,7 +34,10 @@ def get_parent_author(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def extract_interaction_graph(comment_df: pd.DataFrame) -> nx.DiGraph:
+def extract_interaction_graph(
+    comment_df: pd.DataFrame,
+    exclude_authors: Iterable[str] | None = DEFAULT_EXCLUDED_AUTHORS,
+) -> nx.DiGraph:
     """Build a weighted directed user interaction graph from a comments DataFrame.
 
     Each node is a Reddit username. A directed edge (u -> v) with weight w
@@ -42,13 +49,22 @@ def extract_interaction_graph(comment_df: pd.DataFrame) -> nx.DiGraph:
             'id' columns. The 'parent_author' column should be pre-computed
             via get_parent_author(). Rows where 'parent_author' is NaN
             (top-level comments replying to a submission) are dropped.
+        exclude_authors: Usernames removed from the graph, both as repliers
+            and as reply targets. Defaults to '[deleted]' and
+            'AutoModerator'. Pass None to keep every author.
 
     Returns:
         Directed graph with 'weight' edge attributes representing reply counts.
     """
+    interactions = comment_df.dropna(subset=["parent_author"])
+    if exclude_authors is not None:
+        excluded = list(exclude_authors)
+        interactions = interactions[
+            ~interactions["author"].isin(excluded)
+            & ~interactions["parent_author"].isin(excluded)
+        ]
     user_interactions = (
-        comment_df.dropna(subset=["parent_author"])
-        .groupby(["author", "parent_author"])
+        interactions.groupby(["author", "parent_author"])
         .agg(count=("id", "count"))
         .reset_index()
     )

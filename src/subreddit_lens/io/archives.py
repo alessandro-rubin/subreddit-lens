@@ -6,11 +6,14 @@ Shift archives). All file paths accept both strings and pathlib.Path objects.
 
 import io
 import json
+import logging
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
 import zstandard as zstd
+
+logger = logging.getLogger(__name__)
 
 
 def extract_zstd(
@@ -29,8 +32,8 @@ def extract_zstd(
         condition: Optional callable that takes a dict and returns bool.
             Only objects for which condition returns True are yielded.
             If None, all objects are yielded.
-        verbose: If True, prints a progress message every 1000 yielded
-            objects. Default is False.
+        verbose: If True, logs a progress message (level INFO) every 1000
+            yielded objects. Default is False.
 
     Yields:
         dict: Parsed JSON objects satisfying the condition.
@@ -50,11 +53,13 @@ def extract_zstd(
         with dctx.stream_reader(compressed_file) as stream_reader:
             text_content = io.TextIOWrapper(stream_reader, encoding="utf-8")
             for line in text_content:
+                if not line.strip():
+                    continue
                 obj = json.loads(line)
                 if condition is None or condition(obj):
                     count += 1
                     if verbose and count % 1000 == 0:
-                        print(f"{count} comments collected.")
+                        logger.info("%d objects collected from %s", count, filepath)
                     yield obj
 
 

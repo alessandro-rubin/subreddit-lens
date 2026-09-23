@@ -34,7 +34,9 @@ src/subreddit_lens/
                         clustering_utils, formerly a git submodule).
     viz/                graphs.py (network figure), similarity.py (heatmap).
     legacy/             pushshift.py: old scraper, unsupported.
-tests/                  pytest suite.
+    constants.py        Default excluded authors, removed-comment bodies.
+tests/                  pytest suite; conftest.py holds the synthetic
+                        fixture dataset (two threads, documented inline).
 examples/litigi/        r/litigi notebooks, pipeline steps 01-09.
 examples/archive/       Notebooks for other subreddits, not maintained.
 docs/                   ROADMAP.md and future documentation.
@@ -124,9 +126,10 @@ platform-specific paths.
 - `01_scraping.ipynb` and `subreddit_lens.legacy` use the Pushshift API, which
   has been heavily restricted since mid-2023. Use Arctic Shift archives and
   `subreddit_lens.io.extract_zstd()` instead.
-- Several correctness issues are tracked in Phase 2 of `docs/ROADMAP.md`
-  (JS distance vs divergence, UTC hours, duplicated prompt pairs, quote
-  regex, missing replies to submission authors).
+- Replies to submission authors are missing from the user interaction graph
+  because submissions are not loaded yet (Phase 4 of `docs/ROADMAP.md`).
+- By default `[deleted]` and `AutoModerator` are excluded from per-user
+  analyses (`subreddit_lens.constants.DEFAULT_EXCLUDED_AUTHORS`).
 - Some example notebooks reference variables defined in removed or reordered
   cells (e.g. `stop` in 08, `df_pivot` in 05); they need a clean re-run.
 
