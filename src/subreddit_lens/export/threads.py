@@ -6,15 +6,16 @@ This module traverses those trees and exports conversation chains as
 structured data for language model fine-tuning.
 
 The graph passed to these functions must have edges pointing from parent
-to child (as produced by network.create_nx_graph()). Each root-to-leaf
-path in a tree represents one conversation chain in natural reading order.
+to child (as produced by subreddit_lens.network.create_nx_graph()). Each
+root-to-leaf path in a tree represents one conversation chain in natural
+reading order.
 
 Typical usage:
 
     from pathlib import Path
-    from functions.io import load_comments
-    from functions.network import create_nx_graph, get_parent_author
-    from functions.thread_export import extract_thread_chains, export_chains_to_jsonl
+    from subreddit_lens.io import load_comments
+    from subreddit_lens.network import create_nx_graph
+    from subreddit_lens.export import extract_thread_chains, export_chains_to_jsonl
 
     df = load_comments(Path("data/litigi_comments.parquet"))
     G = create_nx_graph(df)
@@ -40,15 +41,15 @@ def extract_thread_chains(
 ) -> list[dict]:
     """Extract all root-to-leaf conversation chains from a comment thread graph.
 
-    Traverses the DAG produced by network.create_nx_graph() using an
-    iterative depth-first search (avoids Python recursion limits on large
-    comment corpora). Each chain is a root-to-leaf path annotated with
+    Traverses the DAG produced by subreddit_lens.network.create_nx_graph()
+    using an iterative depth-first search (avoids Python recursion limits on
+    large comment corpora). Each chain is a root-to-leaf path annotated with
     comment metadata from the DataFrame.
 
     Args:
         G: Directed comment graph with edges pointing from parent to child,
-            as produced by network.create_nx_graph(). Submission root nodes
-            have in-degree 0.
+            as produced by subreddit_lens.network.create_nx_graph().
+            Submission root nodes have in-degree 0.
         df: DataFrame with at least 'id', 'author', and 'body' columns.
             Used to annotate each node in the chain with text and author.
         min_length: Minimum number of comments a chain must contain to be
@@ -159,7 +160,9 @@ def chains_to_prompt_pairs(
             'assistant' (str): The response comment body.
 
     Example:
-        >>> pairs = chains_to_prompt_pairs(chains, system_prompt="Sei un utente di r/litigi.")
+        >>> pairs = chains_to_prompt_pairs(
+        ...     chains, system_prompt="Sei un utente di r/litigi."
+        ... )
         >>> pairs[0]
         {'system': 'Sei un utente di r/litigi.', 'user': '...', 'assistant': '...'}
     """

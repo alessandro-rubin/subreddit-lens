@@ -1,58 +1,90 @@
-# reddit_stuff -- r/litigi Analysis Toolkit
+# subreddit-lens -- subreddit interaction analysis toolkit
 
-Analysis of r/litigi, an Italian-language subreddit. The three main goals are:
+Python package (`subreddit_lens`) for exploring and analysing user interactions
+in a subreddit, built on Reddit comment archives. It started as an analysis of
+r/litigi, an Italian-language subreddit, which is kept as a worked example.
+
+The three main analysis areas are:
 
 1. Posting habits: temporal patterns of user activity (hourly, weekly, monthly).
 2. Social network analysis: user interaction graphs, PageRank influence scoring,
    community visualisation.
-3. Thread export: extracting Reddit conversation trees as structured training data
-   (prompt/response pairs) for language model fine-tuning.
+3. Thread export: extracting Reddit conversation trees as structured data
+   (chains and prompt/response pairs, JSONL).
 
-The data source is the Pushshift/Arctic Shift Reddit archive (zstd-compressed JSON files).
+The data source is the Pushshift/Arctic Shift Reddit archive (zstd-compressed
+JSON files).
+
+The restructuring plan is in `docs/ROADMAP.md`. Keep its checkboxes up to date
+when completing roadmap items.
 
 ## Repository Structure
 
 ```
-functions/
-    __init__.py         Exports the full public API.
-    preprocessing.py    Text cleaning for Italian Reddit comments.
-    io.py               Data loading from zstd archives and Parquet files.
-    network.py          NetworkX graph construction and network metrics.
-    posting_habits.py   KDE-based hourly activity analysis, JS similarity.
-    thread_export.py    Thread tree traversal and JSONL export for training data.
-    visualization.py    Plotly interactive figure generation for graphs.
-    scraping.py         Legacy Pushshift scraper (largely non-functional post-2023).
-clustering/             Git submodule: spectral/hierarchical clustering utilities.
-                        Must be initialised before running 08_user_clustering.ipynb.
+src/subreddit_lens/
+    __init__.py         Exports the public API.
+    cli.py              Typer command-line entry point (`subreddit-lens`).
+    io/                 archives.py (zstd readers), parquet.py (load_comments).
+    text/               preprocessing.py: comment text cleaning.
+    network/            threads.py (comment tree graph), users.py (user
+                        interaction graph), metrics.py (h-index).
+    temporal/           habits.py: KDE hourly activity, JS similarity.
+    export/             threads.py: thread chains, prompt pairs, JSONL export.
+    clustering/         spectral.py, hierarchical.py (adapted from
+                        clustering_utils, formerly a git submodule).
+    viz/                graphs.py (network figure), similarity.py (heatmap).
+    legacy/             pushshift.py: old scraper, unsupported.
+tests/                  pytest suite.
+examples/litigi/        r/litigi notebooks, pipeline steps 01-09.
+examples/archive/       Notebooks for other subreddits, not maintained.
+docs/                   ROADMAP.md and future documentation.
 data/                   Input data files (gitignored -- add files manually).
 output/                 Generated figures, exported JSONL, HTML visualisations.
-archive/                Notebooks for other subreddits, not part of main pipeline.
-01_scraping.ipynb               Pipeline step 1: data collection.
-02_data_loading.ipynb           Pipeline step 2: zstd to Parquet conversion.
-03_eda.ipynb                    Pipeline step 3: exploratory temporal analysis.
-04_word_frequency.ipynb         Pipeline step 4: NLTK word frequency (Italian NLP).
-05_nlp.ipynb                    Pipeline step 5: NLP analysis (originally on Colab).
-06_posting_habits.ipynb         Pipeline step 6: per-user posting patterns.
-07_network_analysis.ipynb       Pipeline step 7: interaction graphs, PageRank.
-08_user_clustering.ipynb        Pipeline step 8: TF-IDF and spectral clustering.
-09_thread_export.ipynb          Pipeline step 9: conversation chain export.
+```
+
+Example notebooks (`examples/litigi/`):
+
+```
+01_scraping.ipynb          Data collection (legacy Pushshift, non-functional).
+02_data_loading.ipynb      zstd to Parquet conversion.
+03_eda.ipynb               Exploratory temporal analysis.
+04_word_frequency.ipynb    NLTK word frequency (Italian NLP).
+05_nlp.ipynb               Sentiment analysis with transformers.
+06_posting_habits.ipynb    Per-user posting patterns.
+07_network_analysis.ipynb  Interaction graphs, PageRank.
+08_user_clustering.ipynb   TF-IDF and spectral clustering.
+09_thread_export.ipynb     Conversation chain export.
 ```
 
 ## Setup
 
-This project uses [uv](https://docs.astral.sh/uv/) for dependency management
-and requires Python 3.13.
+This project uses [uv](https://docs.astral.sh/uv/) and requires Python 3.13.
 
 ```bash
-# Install dependencies
-uv sync
-
-# Initialise the clustering submodule (required for 08_user_clustering.ipynb)
-git submodule update --init --recursive
-
-# Launch Jupyter
+uv sync                   # core + dev group
+uv sync --all-extras      # everything used by the example notebooks
+uv run pytest
+uv run ruff check && uv run ruff format --check
+uv run subreddit-lens --help
 uv run jupyter lab
 ```
+
+## Dependencies and extras
+
+Core dependencies are only what `src/subreddit_lens` imports at module level.
+Everything else is an optional extra in `pyproject.toml`:
+
+- `nlp` -- nltk, scikit-learn, stop-words (04, 08)
+- `sentiment` -- transformers, torch, datasets, tqdm (05)
+- `embeddings` -- sentence-transformers
+- `viz` -- matplotlib, seaborn, pyvis, wordcloud (05, 06, 07, 08)
+- `som` -- minisom (08)
+- `legacy` -- pmaw (01, `subreddit_lens.legacy`)
+- `all` -- all of the above except `legacy`
+
+Development tools (pytest, ruff, jupyterlab) are in the `dev` dependency
+group. Add dependencies with `uv add <pkg>`, `uv add --optional <extra> <pkg>`
+or `uv add --dev <pkg>`. Never use `!pip install` in notebooks.
 
 ## Data
 
@@ -61,78 +93,65 @@ zstandard-compressed newline-delimited JSON file of Reddit comments:
 
     data/litigi_comments.zst
 
-Run `02_data_loading.ipynb` to convert it to Parquet format. Subsequent notebooks
-expect:
+Run `examples/litigi/02_data_loading.ipynb` to convert it to Parquet. The
+other notebooks read:
 
     data/litigi_comments.parquet
 
-All file paths in notebooks use `pathlib.Path` relative to the repository root.
-Do not use absolute or platform-specific paths.
+Notebooks locate the repository root by searching upwards for
+`pyproject.toml` and build `DATA_DIR` / `OUTPUT_DIR` from it, so they work
+regardless of the Jupyter working directory. Do not use absolute or
+platform-specific paths.
 
 ## Development Guidelines
 
-- All reusable logic belongs in `functions/`. Notebooks should import from
-  `functions` rather than defining their own implementations of analysis functions.
+- All reusable logic belongs in `src/subreddit_lens/`. Notebooks import from
+  `subreddit_lens` rather than defining their own implementations.
 - Docstrings follow Google style (Args / Returns / Raises / Example sections).
 - All functions must have type annotations.
 - Use `pathlib.Path` for all file paths.
-- Use `uv add <package>` to add dependencies. Do not use `!pip install` in
-  notebooks intended for local execution.
+- New public functions are exported from their subpackage `__init__.py` and,
+  when broadly useful, from `subreddit_lens/__init__.py` (`__all__`).
+- Every change to `src/` needs tests in `tests/`.
+- Code must pass `ruff check` and `ruff format --check`. The `examples/`
+  directory is currently excluded from ruff.
 - No emojis in code, docstrings, or documentation.
-- The `clustering/` directory is a git submodule pointing to a separate repository.
-  Do not commit changes to it from this repository.
-
-## Optional Dependencies
-
-The following packages are used in specific notebooks but are not listed in
-`pyproject.toml` because they are either optional or may be unavailable:
-
-- `pyvis` -- interactive HTML network visualisation (07_network_analysis.ipynb)
-- `nltk` -- Italian tokenisation and stemming (04_word_frequency.ipynb)
-- `scikit-learn` -- TF-IDF, PCA, LDA (08_user_clustering.ipynb)
-- `minisom` -- Self-Organising Maps (08_user_clustering.ipynb)
-- `stop-words` -- multilingual stopword lists
-- `pmaw` -- Pushshift API wrapper (01_scraping.ipynb, largely non-functional)
-
-Install individually as needed: `uv add <package>`.
+- Notebooks are committed without outputs (they may contain usernames and
+  comment text).
 
 ## Known Issues
 
-- `05_nlp.ipynb` was originally developed in Google Colab and contains
-  Colab-specific file paths. Update path variables at the top of the notebook
-  before running locally.
-- `08_user_clustering.ipynb` requires the `clustering/` submodule to be
-  initialised. The notebook will fail to import until the submodule is populated.
-- The Pushshift API used in `01_scraping.ipynb` has been heavily restricted since
-  mid-2023. For current data collection, use Arctic Shift archives and load with
-  `functions.io.extract_zstd()`.
+- `01_scraping.ipynb` and `subreddit_lens.legacy` use the Pushshift API, which
+  has been heavily restricted since mid-2023. Use Arctic Shift archives and
+  `subreddit_lens.io.extract_zstd()` instead.
+- Several correctness issues are tracked in Phase 2 of `docs/ROADMAP.md`
+  (JS distance vs divergence, UTC hours, duplicated prompt pairs, quote
+  regex, missing replies to submission authors).
+- Some example notebooks reference variables defined in removed or reordered
+  cells (e.g. `stop` in 08, `df_pivot` in 05); they need a clean re-run.
 
-## Thread Export for Bot Training
-
-The thread export pipeline converts Reddit comment trees into training data:
+## Thread Export
 
 ```python
 from pathlib import Path
-from functions import load_comments, create_nx_graph
-from functions.thread_export import (
-    extract_thread_chains,
-    export_chains_to_jsonl,
+
+from subreddit_lens import create_nx_graph, load_comments
+from subreddit_lens.export import (
     chains_to_prompt_pairs,
+    export_chains_to_jsonl,
     export_prompt_pairs_to_jsonl,
+    extract_thread_chains,
 )
 
 df = load_comments(Path("data/litigi_comments.parquet"))
 G = create_nx_graph(df)
 
-# Extract all conversation chains of depth >= 2
 chains = extract_thread_chains(G, df, min_length=2)
-
-# Export full chains (one per thread path)
 export_chains_to_jsonl(chains, Path("output/litigi_threads.jsonl"))
 
-# Convert to prompt/response pairs for SFT
 pairs = chains_to_prompt_pairs(chains, system_prompt="Sei un utente di r/litigi.")
 export_prompt_pairs_to_jsonl(pairs, Path("output/litigi_pairs.jsonl"))
 ```
 
-See `09_thread_export.ipynb` for a complete walkthrough.
+See `examples/litigi/09_thread_export.ipynb` for a complete walkthrough.
+Check Reddit's current terms before using exported data to train models.

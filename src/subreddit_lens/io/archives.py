@@ -1,19 +1,23 @@
-"""Data loading utilities for Reddit comment archives.
+"""Readers for zstd-compressed Reddit archives.
 
-Supports loading from zstd-compressed JSON-lines files (Pushshift/Arctic
-Shift archives) and from Parquet files produced by the data loading
-pipeline. All file paths accept both strings and pathlib.Path objects.
+Supports streaming zstd-compressed JSON-lines files (Pushshift/Arctic
+Shift archives). All file paths accept both strings and pathlib.Path objects.
 """
 
 import io
 import json
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
-import pandas as pd
 import zstandard as zstd
 
 
-def extract_zstd(filepath: str | Path, condition=None, verbose: bool = False):
+def extract_zstd(
+    filepath: str | Path,
+    condition: Callable[[dict[str, Any]], bool] | None = None,
+    verbose: bool = False,
+) -> Iterator[dict[str, Any]]:
     """Stream-process a zstd-compressed JSON-lines file, yielding matching objects.
 
     Decompresses the file on-the-fly without loading it entirely into
@@ -77,31 +81,3 @@ def unpack_zst(in_filepath: str | Path, out_filepath: str | Path) -> None:
     dctx = zstd.ZstdDecompressor(max_window_size=2_147_483_648)
     with open(in_filepath, "rb") as ifh, open(out_filepath, "wb") as ofh:
         dctx.copy_stream(ifh, ofh, write_size=2**16)
-
-
-def load_comments(parquet_path: str | Path) -> pd.DataFrame:
-    """Load a Reddit comments Parquet file and apply standard deduplication.
-
-    Deduplication is performed on (author, body, id, created_utc) to remove
-    duplicate rows that can appear when scraping sessions overlap. A
-    'created_dt' datetime column is added from the Unix timestamp.
-
-    Args:
-        parquet_path: Path to a Parquet file containing Reddit comment data
-            with at least 'author', 'body', 'id', and 'created_utc' columns.
-
-    Returns:
-        DataFrame with duplicates removed and a 'created_dt' column added.
-
-    Raises:
-        FileNotFoundError: If parquet_path does not exist.
-    """
-    parquet_path = Path(parquet_path)
-    if not parquet_path.exists():
-        raise FileNotFoundError(f"Parquet file not found: {parquet_path}")
-
-    df = pd.read_parquet(parquet_path).drop_duplicates(
-        subset=["author", "body", "id", "created_utc"]
-    )
-    df["created_dt"] = pd.to_datetime(df["created_utc"], unit="s")
-    return df

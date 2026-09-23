@@ -58,9 +58,7 @@ def generate_graph_figure(G: nx.Graph) -> go.Figure:
         )
 
     connectivity = [len(list(G.neighbors(n))) for n in G.nodes()]
-    hovertext = [
-        f"Node {n}<br>Neighbors: {list(G.neighbors(n))}" for n in G.nodes()
-    ]
+    hovertext = [f"Node {n}<br>Neighbors: {list(G.neighbors(n))}" for n in G.nodes()]
     node_trace = go.Scatter(
         x=[pos[n][0] for n in G.nodes()],
         y=[pos[n][1] for n in G.nodes()],

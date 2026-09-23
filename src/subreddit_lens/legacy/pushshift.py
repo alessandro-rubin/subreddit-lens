@@ -4,7 +4,7 @@ The Pushshift API was significantly restricted in mid-2023. This module is
 retained for historical reference. For current data collection workflows,
 prefer downloading pre-archived .zst files from the Arctic Shift project
 (https://arctic-shift.photon-reddit.com) and loading them with
-functions.io.extract_zstd().
+subreddit_lens.io.extract_zstd().
 """
 
 from datetime import datetime
@@ -50,7 +50,8 @@ def scrape_subreddit_comments(
         from pmaw import PushshiftAPI  # type: ignore[import]
     except ImportError as exc:
         raise ImportError(
-            "pmaw is not installed. Install it with: uv add pmaw\n"
+            "pmaw is not installed. Install it with: "
+            "uv add 'subreddit-lens[legacy]'\n"
             "Note: pmaw/Pushshift may be non-functional as of 2023."
         ) from exc
 
@@ -77,13 +78,3 @@ def scrape_subreddit_comments(
     comments.to_parquet(output_path)
     print(f"Saved {len(comments)} comments to {output_path}")
     return comments
-
-
-if __name__ == "__main__":
-    df = scrape_subreddit_comments(
-        subreddit="litigi",
-        after=datetime(2020, 1, 1),
-        before=datetime(2023, 12, 31, 23, 59),
-        output_path=Path("data") / "litigi_comments",
-    )
-    print(f"Done. Retrieved {len(df)} comments.")

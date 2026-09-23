@@ -26,8 +26,9 @@ Goal: freeze the current state and remove sources of confusion before
 restructuring.
 
 - [ ] 0.1 Tag the current `main` as `v0.0.0-legacy` so the pre-refactor state
-      stays reachable.
-- [ ] 0.2 Decide the fate of the `clustering/` submodule:
+      stays reachable (manual step: `git tag v0.0.0-legacy <main sha>` and
+      `git push origin v0.0.0-legacy`).
+- [x] 0.2 Decide the fate of the `clustering/` submodule:
       - If `clustering_utils` has (or can get) a `pyproject.toml`, depend on it
         with `uv add git+https://github.com/alessandro-rubin/clustering_utils`
         and remove the submodule (`git submodule deinit`, `git rm clustering`,
@@ -35,15 +36,19 @@ restructuring.
       - Otherwise, copy the three functions actually used
         (`ComputeLaplacian`, `SpectralEmbedding`, `order_by_similarity`,
         plus `plot_similarity_matrix`) into the package with attribution.
-- [ ] 0.3 Delete `environment.yml` (conda); `pyproject.toml` + `uv.lock` are
+      - Done: `clustering_utils` has no packaging, so the functions were
+        adapted into `subreddit_lens.clustering` and `subreddit_lens.viz`
+        and the submodule was removed.
+- [x] 0.3 Delete `environment.yml` (conda); `pyproject.toml` + `uv.lock` are
       the single source of truth.
-- [ ] 0.4 Clean `.gitignore` (remove stale entries such as `lib/`,
+- [x] 0.4 Clean `.gitignore` (remove stale entries such as `lib/`,
       `processed_data`; add `.venv/`, `.ruff_cache/`, `.mypy_cache/`,
       `.pytest_cache/`, `dist/`, `*.egg-info/`).
-- [ ] 0.5 Add `nbstripout` (as a pre-commit hook in Phase 3) so notebook
+- [x] 0.5 Add `nbstripout` (as a pre-commit hook in Phase 3) so notebook
       outputs, which may contain usernames and comment text, are never
       committed. Strip existing outputs from `01_scraping.ipynb`,
       `04_word_frequency.ipynb` and `archive/m_tilde.ipynb`.
+      (Outputs stripped; the pre-commit hook is part of 3.5.)
 
 Acceptance criteria:
 - `git submodule status` is empty, or the submodule decision is documented.
@@ -56,7 +61,7 @@ Acceptance criteria:
 Goal: `uv add git+https://github.com/alessandro-rubin/subreddit-lens` works in
 any project, and `import subreddit_lens` works from any directory.
 
-- [ ] 1.1 Move to the `src` layout and rename the package:
+- [x] 1.1 Move to the `src` layout and rename the package:
 
       ```
       src/subreddit_lens/
@@ -68,16 +73,21 @@ any project, and `import subreddit_lens` works from any directory.
           temporal/      habits.py (KDE, JS distance), trends.py
           text/          preprocessing.py, languages/ (it.py, en.py)
           export/        threads.py (chains, prompt pairs, JSONL)
-          viz/           plotly.py, pyvis.py
+          clustering/    spectral.py, hierarchical.py
+          viz/           graphs.py, similarity.py
           legacy/        pushshift.py (old scraping module)
           cli.py
       tests/
-      notebooks/
       examples/litigi/
+      examples/archive/
       docs/
       ```
 
-- [ ] 1.2 Rewrite `pyproject.toml`:
+      As implemented: `config.py`, `io/schema.py`, `temporal/trends.py` and
+      `text/languages/` arrive with Phase 4; a `notebooks/` directory for
+      generic tutorials will be added when there is a generic tutorial.
+
+- [x] 1.2 Rewrite `pyproject.toml`:
       - `[build-system]` with the `uv_build` backend (check the current
         version range in the uv docs when doing this).
       - Core `dependencies`: only what the core modules import
@@ -85,35 +95,37 @@ any project, and `import subreddit_lens` works from any directory.
         `plotly`, `typer`).
       - `[project.optional-dependencies]`:
         `nlp` (nltk, scikit-learn, stop-words),
-        `sentiment` (transformers, datasets),
+        `sentiment` (transformers, torch, datasets, tqdm),
         `embeddings` (sentence-transformers),
         `viz` (pyvis, matplotlib, seaborn, wordcloud),
         `som` (minisom),
-        `app` (streamlit),
+        `legacy` (pmaw),
+        `app` (streamlit, added with Phase 6),
         `all` (everything above).
-      - `[dependency-groups] dev`: pytest, pytest-cov, ruff, mypy,
-        pre-commit, nbstripout, jupyterlab.
+      - `[dependency-groups] dev`: pytest, ruff, jupyterlab (pytest-cov,
+        mypy, pre-commit and nbstripout are added with Phase 3).
       - `[project.scripts] subreddit-lens = "subreddit_lens.cli:app"`.
       - Metadata: `description`, `license`, `authors`, `keywords`,
         `classifiers`, `[project.urls]`.
       - Remove `jupyter` and `sentence-transformers` from core dependencies.
-- [ ] 1.3 Optional imports: modules that need an extra raise a clear
+- [x] 1.3 Optional imports: modules that need an extra raise a clear
       `ImportError` naming the extra to install
       (e.g. `pip install subreddit-lens[viz]`).
-- [ ] 1.4 Move the notebooks: generic ones into `notebooks/`, r/litigi-specific
-      ones into `examples/litigi/`. Update all imports from `functions` to
+- [x] 1.4 Move the notebooks: generic ones into `notebooks/`, r/litigi-specific
+      ones into `examples/litigi/` (all current notebooks are r/litigi-specific,
+      so they all went to `examples/litigi/`). Update all imports from `functions` to
       `subreddit_lens`.
-- [ ] 1.5 Fix the inconsistent notebook paths. Notebooks currently read from
+- [x] 1.5 Fix the inconsistent notebook paths. Notebooks currently read from
       `processed_data/itigi_comments_2024.parqet`,
       `processed_data/itigi_comments_copnsolidated.parqet`,
       `data/litigi.pickle`, while `CLAUDE.md` says `data/litigi_comments.parquet`.
       Use one configurable data directory and correct file names.
-- [ ] 1.6 Remove `!pip install` cells from `05_nlp.ipynb` and the Colab paths;
+- [x] 1.6 Remove `!pip install` cells from `05_nlp.ipynb` and the Colab paths;
       remove local re-definitions of library functions (e.g. `hindex` in
       `07_network_analysis.ipynb`).
-- [ ] 1.7 Add `README.md` (what it is, install, quick start, data sources,
-      legal notice), `LICENSE` (MIT or Apache-2.0), `CHANGELOG.md`.
-- [ ] 1.8 Update `CLAUDE.md` for the new layout.
+- [x] 1.7 Add `README.md` (what it is, install, quick start, data sources,
+      legal notice), `LICENSE` (MIT chosen), `CHANGELOG.md`.
+- [x] 1.8 Update `CLAUDE.md` for the new layout.
 
 Acceptance criteria:
 - `uv build` produces a wheel and sdist without errors.
@@ -188,7 +200,12 @@ Goal: every change is automatically linted, type-checked and tested.
       `text`, `export`. Include a round-trip test (zstd -> Parquet -> graph ->
       JSONL) on the fixture.
 - [ ] 3.3 `ruff` for lint and format (rule sets: `E`, `F`, `I`, `UP`, `B`,
-      `SIM`, `D` with Google convention, `NPY`, `PD`).
+      `SIM`, `D` with Google convention, `NPY`, `PD`). Partly done: `E`,
+      `F`, `I`, `UP`, `B`, `SIM` are enabled on `src/` and `tests/`.
+- [ ] 3.3b Lint the example notebooks (remove `examples` from ruff's
+      `extend-exclude`). They currently have unused imports and undefined
+      names left from Colab-era cell reordering (`stop` in 08, `df_pivot`
+      in 05); fix them with a clean top-to-bottom re-run on real data.
 - [ ] 3.4 `mypy --strict` on `src/` (or `ty` once it is stable enough).
 - [ ] 3.5 `pre-commit` with ruff, nbstripout, end-of-file/trailing-whitespace
       hooks.

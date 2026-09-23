@@ -1,3 +1,0 @@
-[submodule "clustering"]
-	path = clustering
-	url = https://github.com/alessandro-rubin/clustering_utils.git

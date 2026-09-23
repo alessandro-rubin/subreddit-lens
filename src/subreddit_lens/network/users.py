@@ -1,14 +1,8 @@
-"""NetworkX graph construction for Reddit comment data.
+"""User interaction graph construction.
 
-Two distinct graph types are supported:
-
-1. User interaction graph (extract_interaction_graph): nodes are usernames,
-   edges represent reply relationships weighted by reply count. Used for
-   social network analysis and PageRank scoring.
-
-2. Comment thread graph (create_nx_graph): nodes are comment IDs and
-   submission IDs, edges go from parent to child (root-to-leaf direction).
-   Used for thread traversal and export via functions.thread_export.
+In the user interaction graph, nodes are usernames and edges represent reply
+relationships weighted by reply count. It is used for social network analysis
+and PageRank scoring.
 """
 
 import networkx as nx
@@ -64,42 +58,7 @@ def extract_interaction_graph(comment_df: pd.DataFrame) -> nx.DiGraph:
             user_interactions["author"],
             user_interactions["parent_author"],
             [{"weight": c} for c in user_interactions["count"]],
-        )
-    )
-    return G
-
-
-def create_nx_graph(df: pd.DataFrame) -> nx.DiGraph:
-    """Build a directed comment thread graph with edges pointing parent to child.
-
-    Each node is a comment ID or a submission ID (the Reddit type prefix such
-    as 't1_' or 't3_' is stripped). An edge (parent -> comment) means the
-    comment is a direct reply to the parent. This produces a forest of trees,
-    one tree per submission thread.
-
-    Args:
-        df: DataFrame with 'id', 'parent_id', and 'link_id' columns.
-            All three columns must be in Reddit's 'tX_<id>' format.
-
-    Returns:
-        Directed acyclic graph suitable for top-down thread traversal.
-        Submission root nodes (derived from 'link_id') are included as
-        nodes with no incoming edges.
-
-    Note:
-        The edge direction here is parent -> child (oldest ancestor to newest
-        reply), which is the natural reading order of a conversation. This
-        allows straightforward DFS/BFS traversal in thread_export functions.
-    """
-    G = nx.DiGraph()
-    G.add_nodes_from(df["id"])
-    # Add submission root nodes (strip the 't3_' type prefix)
-    G.add_nodes_from(df["link_id"].drop_duplicates().str.split("_").str[1])
-    # Edges: parent_id (stripped) -> comment id
-    G.add_edges_from(
-        zip(
-            df["parent_id"].str.split("_").str[1],
-            df["id"],
+            strict=True,
         )
     )
     return G
@@ -133,32 +92,3 @@ def symmetrize_graph(G: nx.DiGraph) -> nx.Graph:
             delta = weight
         G_sym.add_edge(u, v, weight=total_weight, delta=delta)
     return G_sym
-
-
-def hindex(G: nx.Graph, node) -> int:
-    """Compute the h-index of a node within a graph.
-
-    The h-index of node n is the largest integer h such that n has at
-    least h neighbours each of which has degree >= h. This is analogous
-    to the academic h-index applied to a node's neighbourhood, and gives
-    a measure of how influential a user is relative to their connections.
-
-    Args:
-        G: A NetworkX graph (directed or undirected). For directed graphs,
-            degree refers to total degree (in + out).
-        node: A node identifier present in G.
-
-    Returns:
-        Integer h-index value for the node. Returns 0 if the node has no
-        neighbours.
-    """
-    neighbour_degrees = sorted(
-        [G.degree(n) for n in G.neighbors(node)], reverse=True
-    )
-    h = 0
-    for i, deg in enumerate(neighbour_degrees, start=1):
-        if deg >= i:
-            h = i
-        else:
-            break
-    return h
