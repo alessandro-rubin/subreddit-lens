@@ -31,18 +31,17 @@ dependencies = [
 [project.optional-dependencies]
 nlp = ["nltk>=3.9", "scikit-learn>=1.7", "stop-words>=2018.7.23"]
 sentiment = ["transformers>=4.55", "torch>=2.8", "datasets>=4.0", "tqdm>=4.67"]
-embeddings = ["sentence-transformers>=5.0.0"]
-viz = ["matplotlib>=3.10.5", "pyvis>=0.3.2", "seaborn>=0.13.2", "wordcloud>=1.9.4"]
+viz = ["matplotlib>=3.10.5", "pyvis>=0.3.2", "seaborn>=0.13.2"]
 som = ["minisom>=2.3.5"]
 legacy = ["pmaw>=3.0.0"]
-all = ["subreddit-lens[nlp,sentiment,embeddings,viz,som]"]
+all = ["subreddit-lens[nlp,sentiment,viz,som]"]
 
 [project.scripts]
 subreddit-lens = "subreddit_lens.cli:app"
 
 [project.urls]
 Repository = "https://github.com/alessandro-rubin/reddit_stuff"
-Roadmap = "https://github.com/alessandro-rubin/reddit_stuff/blob/main/docs/ROADMAP.md"
+Roadmap = "https://github.com/alessandro-rubin/reddit_stuff/blob/master/docs/ROADMAP.md"
 
 [dependency-groups]
 dev = [

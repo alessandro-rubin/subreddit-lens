@@ -33,8 +33,7 @@ Optional features are grouped as extras:
 |--------------|-----------------------------------------------|-----------------------------------|
 | `nlp`        | nltk, scikit-learn, stop-words                | word frequencies, TF-IDF, LDA     |
 | `sentiment`  | transformers, torch, datasets, tqdm           | sentiment classification          |
-| `embeddings` | sentence-transformers                         | sentence embeddings (pulls PyTorch) |
-| `viz`        | matplotlib, seaborn, pyvis, wordcloud         | static plots, HTML network views  |
+| `viz`        | matplotlib, seaborn, pyvis                    | static plots, HTML network views  |
 | `som`        | minisom                                       | self-organising maps              |
 | `legacy`     | pmaw                                          | old Pushshift scraper             |
 | `all`        | everything except `legacy`                    |                                   |

@@ -28,6 +28,9 @@ class TestGraphFigure:
         nx.set_node_attributes(G, nx.spring_layout(G, seed=0), "pos")
         fig = generate_graph_figure(G)
         assert isinstance(fig, go.Figure)
+        # One trace for all edges and one for the nodes.
+        assert len(fig.data) == 2
+        assert len(fig.data[0].x) == 3 * G.number_of_edges()
 
     def test_missing_positions_raise(self) -> None:
         with pytest.raises(KeyError):

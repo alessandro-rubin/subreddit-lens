@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (dependency and performance review)
+- `js_distance_matrix` / `js_similarity` are vectorised with NumPy
+  (entropy formulation); same values as SciPy's `jensenshannon` to within
+  1e-14, about 20x faster (2,000 users: about 2 s instead of 36 s).
+- `scipy.stats` is imported only when posting habits are computed:
+  `import subreddit_lens` drops from about 1.2 s to 0.7 s, and every CLI
+  command starts faster.
+- `generate_graph_figure` draws all edges in one Plotly trace instead of one
+  trace per edge (10,000 edges: 0.26 s instead of 2.8 s to build, and far
+  faster to render).
+- Example notebooks 03, 06, 07, 08 use `get_parent_author()` instead of a
+  local re-implementation that still had the comment/submission ID
+  collision bug; unused imports removed; undefined `stop` (08) and
+  `df_pivot` (05) defined; a duplicated data-loading cell removed from 08.
+  Includes the `fix/notebooks-load-comments` branch (notebooks 03, 06, 07,
+  08 load data with `load_comments()`).
+
+### Removed (dependency and performance review)
+- `embeddings` extra (`sentence-transformers`): used by no notebook or
+  module.
+- `wordcloud` from the `viz` extra: imported in 05 but never used.
+- `extract_zstd(verbose=...)`: unused; `ingest_archive` logs progress per
+  chunk.
+
 ### Fixed (code review)
 - `preprocess` left a stray ')' for Markdown links whose URL contains
   parentheses, e.g. Wikipedia links such as `.../Diritto_(disambigua)`.
