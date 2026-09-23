@@ -93,6 +93,31 @@ class Config:
         """Path of the submissions Parquet file."""
         return self.data_dir / f"{self.subreddit}_submissions.parquet"
 
+    @property
+    def users_graph(self) -> Path:
+        """Path of the user interaction graph (GraphML)."""
+        return self.output_dir / f"{self.subreddit}_users.graphml"
+
+    @property
+    def user_metrics_file(self) -> Path:
+        """Path of the per-user metrics table (CSV)."""
+        return self.output_dir / f"{self.subreddit}_user_metrics.csv"
+
+    @property
+    def habits_file(self) -> Path:
+        """Path of the per-user hourly activity densities (Parquet)."""
+        return self.output_dir / f"{self.subreddit}_habits.parquet"
+
+    @property
+    def chains_file(self) -> Path:
+        """Path of the conversation chains export (JSONL)."""
+        return self.output_dir / f"{self.subreddit}_threads.jsonl"
+
+    @property
+    def pairs_file(self) -> Path:
+        """Path of the prompt/response pairs export (JSONL)."""
+        return self.output_dir / f"{self.subreddit}_pairs.jsonl"
+
     def date_filter(self) -> Callable[[dict[str, Any]], bool] | None:
         """Return a record filter for the configured date range.
 

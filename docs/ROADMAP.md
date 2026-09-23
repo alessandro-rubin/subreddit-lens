@@ -283,7 +283,7 @@ Acceptance criteria:
 
 Goal: the full pipeline is reproducible without notebooks.
 
-- [ ] 5.1 Typer app in `cli.py` with commands:
+- [x] 5.1 Typer app in `cli.py` with commands:
 
       ```
       subreddit-lens ingest   COMMENTS.zst [SUBMISSIONS.zst] --out data/sub.parquet
@@ -294,13 +294,20 @@ Goal: the full pipeline is reproducible without notebooks.
       subreddit-lens app      --config subreddit-lens.toml
       ```
 
-- [ ] 5.2 Every command accepts `--config FILE` and CLI options override the
+      As implemented: file paths come from the config instead of positional
+      arguments (`init`, `ingest`, `network`, `metrics`, `habits`, `export`,
+      plus `run` for the whole pipeline). The logic lives in `pipeline.py`
+      so notebooks can call the same steps. `app` arrives with Phase 6.
+
+- [x] 5.2 Every command accepts `--config FILE` and CLI options override the
       config.
-- [ ] 5.3 CLI tests with `typer.testing.CliRunner` on the fixture dataset.
+- [x] 5.3 CLI tests with `typer.testing.CliRunner` on the fixture dataset.
 
 Acceptance criteria:
 - A new user can go from raw `.zst` files to metrics and JSONL export with
-  five commands documented in the README.
+  five commands documented in the README. (Done: `init`, `ingest`,
+  `network`, `metrics`, `export`, or `run`; verified end to end on
+  synthetic archives.)
 
 ---
 

@@ -108,12 +108,33 @@ threads = create_nx_graph(comments)
 chains = extract_thread_chains(threads, comments, min_length=2)
 ```
 
-A command-line interface is being built; for now it only reports the
-version:
+## Command line
+
+The whole pipeline runs from the terminal, driven by the configuration file:
 
 ```bash
-uv run subreddit-lens version
+uv run subreddit-lens init litigi --timezone Europe/Rome --language it
+# put litigi_comments.zst (and optionally litigi_submissions.zst) in data/
+uv run subreddit-lens ingest     # archives -> Parquet (chunked)
+uv run subreddit-lens network    # -> output/litigi_users.graphml
+uv run subreddit-lens metrics    # -> output/litigi_user_metrics.csv
+uv run subreddit-lens habits     # -> output/litigi_habits.parquet
+uv run subreddit-lens export     # -> output/litigi_threads.jsonl, litigi_pairs.jsonl
 ```
+
+`uv run subreddit-lens run` does all of the above in one go (`--skip-ingest`
+reuses existing Parquet files). Every command takes `--config FILE` (default
+`subreddit-lens.toml` in the current directory) and options that override it,
+e.g. `ingest --start 2023-01-01`, `habits --timezone UTC --min-posts 20`,
+`export --format pairs --preprocess --system-prompt "..."`. Add `-v` before
+the command for progress messages, and `--help` after any command for its
+options. For the r/litigi example:
+
+```bash
+uv run subreddit-lens run --config examples/litigi/subreddit-lens.toml
+```
+
+The same steps are available from Python as `subreddit_lens.pipeline.run_*`.
 
 ## Data
 
@@ -148,7 +169,8 @@ src/subreddit_lens/   the package
     clustering/       spectral and hierarchical clustering helpers
     viz/              Plotly figures
     legacy/           old Pushshift scraper (unsupported)
-    cli.py            command-line entry point
+    pipeline.py       pipeline steps driven by the config (used by the CLI)
+    cli.py            command-line interface
 examples/litigi/      the r/litigi analysis notebooks (01-09)
 examples/archive/     notebooks for other subreddits
 tests/                pytest suite

@@ -23,7 +23,11 @@ when completing roadmap items.
 ```
 src/subreddit_lens/
     __init__.py         Exports the public API.
-    cli.py              Typer command-line entry point (`subreddit-lens`).
+    cli.py              Typer CLI (`subreddit-lens`): init, ingest, network,
+                        metrics, habits, export, run. Thin wrapper around
+                        pipeline.py.
+    pipeline.py         run_ingest/run_network/run_metrics/run_habits/
+                        run_export: one step each, driven by a Config.
     config.py           Config dataclass and load_config() (TOML).
     io/                 archives.py (zstd readers), schema.py (canonical
                         columns, normalize), ingest.py (chunked zstd to
@@ -74,6 +78,7 @@ uv run pytest --cov
 uv run ruff check && uv run ruff format --check
 uv run mypy
 uv run subreddit-lens --help
+uv run subreddit-lens run --config examples/litigi/subreddit-lens.toml
 uv run jupyter lab
 ```
 
@@ -135,6 +140,10 @@ platform-specific paths.
   on `src/` and `tests/`). The `examples/` directory is currently excluded
   from ruff. CI (`.github/workflows/ci.yml`) runs the same checks.
 - Coverage must stay at or above 80% (`legacy/` and `viz/` excluded).
+- CLI commands contain no analysis logic: they load the Config, apply
+  command-line overrides with `dataclasses.replace`, call a `pipeline.run_*`
+  function and turn `FileNotFoundError`/`ValueError` into a one-line error
+  with exit code 1. New pipeline steps go in `pipeline.py` first.
 - networkx graph classes are generic only for type checkers: annotate them
   as `nx.DiGraph[str]` and add `from __future__ import annotations` to the
   module, since `nx.DiGraph[str]` fails at runtime.
