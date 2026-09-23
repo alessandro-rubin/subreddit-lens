@@ -25,8 +25,8 @@ all of them hold. Phases are meant to be delivered as separate pull requests
 Goal: freeze the current state and remove sources of confusion before
 restructuring.
 
-- [ ] 0.1 Tag the current `main` as `v0.0.0-legacy` so the pre-refactor state
-      stays reachable (manual step: `git tag v0.0.0-legacy <main sha>` and
+- [ ] 0.1 Tag the last pre-refactor commit as `v0.0.0-legacy` so that state
+      stays reachable (manual step: `git tag v0.0.0-legacy f655fe8` and
       `git push origin v0.0.0-legacy`).
 - [x] 0.2 Decide the fate of the `clustering/` submodule:
       - If `clustering_utils` has (or can get) a `pyproject.toml`, depend on it
@@ -220,15 +220,15 @@ Goal: every change is automatically linted, type-checked and tested.
       lower `requires-python`). As implemented (`.github/workflows/ci.yml`):
       `uv sync --locked` without extras, since the tests do not need them
       and the `sentiment` extra pulls in PyTorch; also builds the package
-      and checks that notebooks have no outputs. Runs on pushes to `main`
+      and checks that notebooks have no outputs. Runs on pushes to `master`
       and on pull requests.
 - [x] 3.7 Coverage target: 80% on `src/subreddit_lens` (excluding `legacy/`
       and `viz/`). Enforced by `fail_under` in `pyproject.toml`; currently
       98% with branch coverage.
 
 Acceptance criteria:
-- CI is green on the default branch. (Pending: the workflow runs for the
-  first time on the pull request.)
+- CI is green on the default branch. (Green on pull request #1; the first
+  run on `master` happens once the trigger fix for `master` is merged.)
 - `uv run pytest` passes locally in under a minute.
 
 ---
