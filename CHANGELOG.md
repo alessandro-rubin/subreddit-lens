@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (code review)
+- `preprocess` left a stray ')' for Markdown links whose URL contains
+  parentheses, e.g. Wikipedia links such as `.../Diritto_(disambigua)`.
+- `load_config` raised `TypeError` (shown by the CLI as a traceback) for
+  values of the wrong type, e.g. `subreddit = 123`; it now raises
+  `ValueError` with the offending key.
+- The CLI reports a corrupt or truncated archive in one line instead of a
+  traceback.
+- `user_metrics` recomputed every neighbour's degree for each user's
+  h-index, which is quadratic in the size of the hubs; degrees are now
+  computed once (20,000 users: about 2 s instead of about 2 minutes).
+- `compute_posting_habits_pdf` looked up every author before checking
+  `min_posts`; authors are now filtered by post count first (20x faster
+  with many one-post authors).
+- `generate_graph_figure` coloured directed graphs by out-degree only; it
+  now uses total degree.
+
+### Removed (cleanup)
+- `unpack_zst`: superseded by `ingest_archive`, which streams the archive
+  instead of decompressing it to disk, and unused elsewhere.
+- `subreddit_lens.clustering` (`compute_laplacian`, `spectral_embedding`):
+  thin wrappers used only by `08_user_clustering.ipynb`, which now computes
+  the same quantities with NumPy and `sklearn.metrics.pairwise.rbf_kernel`
+  (verified to give identical results). `order_by_similarity` moved to
+  `subreddit_lens.viz`, next to `plot_similarity_matrix`, and is still
+  exported from `subreddit_lens`.
+
 ### Added (Phase 5)
 - Command-line interface: `subreddit-lens init | ingest | network | metrics
   | habits | export | run`, driven by the TOML config, with overrides such

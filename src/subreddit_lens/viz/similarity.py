@@ -1,16 +1,39 @@
 """Heatmap visualisation of similarity matrices.
 
 Adapted from the author's clustering_utils repository
-(https://github.com/alessandro-rubin/clustering_utils), previously included
-in this project as a git submodule.
+(https://github.com/alessandro-rubin/clustering_utils).
 """
 
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from scipy.cluster import hierarchy
+from scipy.spatial.distance import squareform
 
-from subreddit_lens.clustering.hierarchical import order_by_similarity
+
+def order_by_similarity(similarity_matrix: np.ndarray) -> np.ndarray:
+    """Return a permutation that places similar items next to each other.
+
+    Converts the similarity matrix to a dissimilarity (1 - S), runs
+    average-linkage hierarchical clustering, and applies optimal leaf
+    ordering to the resulting dendrogram. Used by plot_similarity_matrix()
+    so that groups of similar items appear as blocks along the diagonal.
+
+    Args:
+        similarity_matrix: Square symmetric similarity matrix with values in
+            [0, 1] and ones on the diagonal.
+
+    Returns:
+        1-D integer array with the optimal ordering of the rows/columns.
+    """
+    # squareform converts the square matrix into the condensed form expected
+    # by hierarchy.linkage.
+    distances = squareform(1 - similarity_matrix)
+    linkage = hierarchy.linkage(distances, method="average")
+    ordered = hierarchy.optimal_leaf_ordering(linkage, distances)
+    return hierarchy.leaves_list(ordered)
 
 
 def plot_similarity_matrix(

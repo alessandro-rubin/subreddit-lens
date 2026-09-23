@@ -22,7 +22,6 @@ from subreddit_lens.io import (
     load_submissions,
     normalize,
     strip_type_prefix,
-    unpack_zst,
 )
 from subreddit_lens.network import create_nx_graph
 
@@ -51,12 +50,6 @@ class TestExtractZstd:
     def test_missing_file(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError):
             list(extract_zstd(tmp_path / "missing.zst"))
-
-
-def test_unpack_zst(archive: Path, tmp_path: Path) -> None:
-    out = tmp_path / "comments.ndjson"
-    unpack_zst(archive, out)
-    assert out.read_text(encoding="utf-8").count("\n") == 12
 
 
 class TestLoadComments:

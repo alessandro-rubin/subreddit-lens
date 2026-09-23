@@ -61,28 +61,3 @@ def extract_zstd(
                     if verbose and count % 1000 == 0:
                         logger.info("%d objects collected from %s", count, filepath)
                     yield obj
-
-
-def unpack_zst(in_filepath: str | Path, out_filepath: str | Path) -> None:
-    """Decompress a zstd-compressed file to raw bytes on disk.
-
-    Streams the decompression in 64 KB chunks to keep memory usage low
-    regardless of file size.
-
-    Args:
-        in_filepath: Path to the .zst input file.
-        out_filepath: Path to write the decompressed output. The parent
-            directory must already exist.
-
-    Raises:
-        FileNotFoundError: If in_filepath does not exist.
-        zstandard.ZstdError: If the file is not valid zstd-compressed data.
-    """
-    in_filepath = Path(in_filepath)
-    out_filepath = Path(out_filepath)
-    if not in_filepath.exists():
-        raise FileNotFoundError(f"Input file not found: {in_filepath}")
-
-    dctx = zstd.ZstdDecompressor(max_window_size=2_147_483_648)
-    with open(in_filepath, "rb") as ifh, open(out_filepath, "wb") as ofh:
-        dctx.copy_stream(ifh, ofh, write_size=2**16)

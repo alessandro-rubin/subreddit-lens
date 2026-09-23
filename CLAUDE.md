@@ -38,9 +38,8 @@ src/subreddit_lens/
                         user_metrics), storage.py (GraphML save/load).
     temporal/           habits.py: KDE hourly activity, JS similarity.
     export/             threads.py: thread chains, prompt pairs, JSONL export.
-    clustering/         spectral.py, hierarchical.py (adapted from
-                        clustering_utils, formerly a git submodule).
-    viz/                graphs.py (network figure), similarity.py (heatmap).
+    viz/                graphs.py (network figure), similarity.py (heatmap,
+                        order_by_similarity).
     legacy/             pushshift.py: old scraper, unsupported.
     constants.py        Default excluded authors, removed-comment bodies.
 tests/                  pytest suite; conftest.py holds the synthetic

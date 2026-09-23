@@ -17,7 +17,7 @@ def generate_graph_figure[N: Hashable](G: nx.Graph[N]) -> go.Figure:
 
     Nodes must have a 'pos' attribute containing (x, y) coordinate tuples,
     set before calling this function via a layout algorithm such as
-    nx.spring_layout(). Node colour encodes degree (number of neighbours).
+    nx.spring_layout(). Node colour encodes degree (in + out for directed graphs).
 
     Args:
         G: NetworkX graph (directed or undirected) with 'pos' node attributes
@@ -61,7 +61,7 @@ def generate_graph_figure[N: Hashable](G: nx.Graph[N]) -> go.Figure:
             )
         )
 
-    connectivity = [len(list(G.neighbors(n))) for n in G.nodes()]
+    connectivity = [G.degree(n) for n in G.nodes()]
     hovertext = [f"Node {n}<br>Neighbors: {list(G.neighbors(n))}" for n in G.nodes()]
     node_trace = go.Scatter(
         x=[pos[n][0] for n in G.nodes()],

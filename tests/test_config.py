@@ -49,6 +49,20 @@ class TestLoadConfig:
         assert config.data_dir == (tmp_path / "conf" / "data").resolve()
         assert config.date_filter() is None
 
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "subreddit = 123",
+            'subreddit = "litigi"\ndata_dir = 5',
+            'subreddit = "litigi"\nexclude_authors = "AutoModerator"',
+            'subreddit = "litigi"\nexclude_authors = [1, 2]',
+        ],
+    )
+    def test_wrong_value_types(self, tmp_path: Path, text: str) -> None:
+        # Regression: these raised TypeError, which the CLI does not catch.
+        with pytest.raises(ValueError):
+            load_config(write(tmp_path, text))
+
     def test_unknown_key(self, tmp_path: Path) -> None:
         path = write(tmp_path, 'subreddit = "litigi"\ntimzone = "Europe/Rome"')
         with pytest.raises(ValueError, match="timzone"):

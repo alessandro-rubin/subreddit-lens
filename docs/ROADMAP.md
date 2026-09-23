@@ -38,7 +38,9 @@ restructuring.
         plus `plot_similarity_matrix`) into the package with attribution.
       - Done: `clustering_utils` has no packaging, so the functions were
         adapted into `subreddit_lens.clustering` and `subreddit_lens.viz`
-        and the submodule was removed.
+        and the submodule was removed. Later, `subreddit_lens.clustering`
+        was removed too: only `order_by_similarity` (moved to `viz`) was
+        used outside notebook 08.
 - [x] 0.3 Delete `environment.yml` (conda); `pyproject.toml` + `uv.lock` are
       the single source of truth.
 - [x] 0.4 Clean `.gitignore` (remove stale entries such as `lib/`,
@@ -73,7 +75,6 @@ any project, and `import subreddit_lens` works from any directory.
           temporal/      habits.py (KDE, JS distance), trends.py
           text/          preprocessing.py, languages/ (it.py, en.py)
           export/        threads.py (chains, prompt pairs, JSONL)
-          clustering/    spectral.py, hierarchical.py
           viz/           graphs.py, similarity.py
           legacy/        pushshift.py (old scraping module)
           cli.py

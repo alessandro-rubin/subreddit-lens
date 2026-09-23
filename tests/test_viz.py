@@ -1,4 +1,4 @@
-"""Tests for subreddit_lens.viz and subreddit_lens.clustering."""
+"""Tests for subreddit_lens.viz."""
 
 import networkx as nx
 import numpy as np
@@ -6,12 +6,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from subreddit_lens.clustering import (
-    compute_laplacian,
+from subreddit_lens.viz import (
+    generate_graph_figure,
     order_by_similarity,
-    spectral_embedding,
+    plot_similarity_matrix,
 )
-from subreddit_lens.viz import generate_graph_figure, plot_similarity_matrix
 
 BLOCKS = np.array(
     [
@@ -52,28 +51,3 @@ def test_order_by_similarity_keeps_blocks_together() -> None:
     position = {int(item): i for i, item in enumerate(order)}
     assert abs(position[0] - position[1]) == 1
     assert abs(position[2] - position[3]) == 1
-
-
-class TestSpectral:
-    def test_laplacian_properties(self) -> None:
-        M, S, D = compute_laplacian(S_m=BLOCKS)
-        np.testing.assert_allclose(S, BLOCKS)
-        np.testing.assert_allclose(D, BLOCKS.sum(axis=1))
-        # The normalised similarity has largest eigenvalue 1.
-        assert np.linalg.eigvalsh(M).max() == pytest.approx(1.0)
-        L, _, _ = compute_laplacian(S_m=BLOCKS, pseudo=False)
-        np.testing.assert_allclose(L, np.identity(4) - M)
-
-    def test_laplacian_from_data(self) -> None:
-        X = np.array([[0.0, 0.0], [0.0, 1.0]])
-        _, S, _ = compute_laplacian(X, rbf_p=1.0)
-        np.testing.assert_allclose(S, [[1.0, np.exp(-1.0)], [np.exp(-1.0), 1.0]])
-
-    def test_requires_input(self) -> None:
-        with pytest.raises(ValueError):
-            compute_laplacian()
-
-    def test_embedding_shape(self) -> None:
-        eivals, eivecs = spectral_embedding(None, S_m=BLOCKS, pseudo=True, k=2)
-        assert eivals.shape == (2,)
-        assert eivecs.shape == (4, 2)

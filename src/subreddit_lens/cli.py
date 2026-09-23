@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+import zstandard as zstd
 
 from subreddit_lens import __version__, pipeline
 from subreddit_lens.config import Config, load_config
@@ -97,6 +98,8 @@ def _run[T](step: Callable[[], T]) -> T:
         return step()
     except (FileNotFoundError, ValueError) as exc:
         raise _fail(str(exc)) from exc
+    except zstd.ZstdError as exc:
+        raise _fail(f"Corrupt or truncated archive: {exc}") from exc
 
 
 def _parse_date(value: str | None, name: str) -> date | None:

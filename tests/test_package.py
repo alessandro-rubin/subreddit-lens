@@ -14,7 +14,6 @@ SUBPACKAGES = [
     "network",
     "temporal",
     "export",
-    "clustering",
     "viz",
     "legacy",
 ]

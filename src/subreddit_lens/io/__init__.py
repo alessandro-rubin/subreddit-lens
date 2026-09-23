@@ -1,6 +1,6 @@
 """Data loading from zstd archives and Parquet files."""
 
-from subreddit_lens.io.archives import extract_zstd, unpack_zst
+from subreddit_lens.io.archives import extract_zstd
 from subreddit_lens.io.ingest import ingest_archive
 from subreddit_lens.io.parquet import load_comments, load_submissions
 from subreddit_lens.io.schema import (
@@ -21,5 +21,4 @@ __all__ = [
     "load_submissions",
     "normalize",
     "strip_type_prefix",
-    "unpack_zst",
 ]

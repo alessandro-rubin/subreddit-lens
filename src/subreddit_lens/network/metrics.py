@@ -3,12 +3,22 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Hashable
+from collections.abc import Hashable, Iterable
 
 import networkx as nx
 import pandas as pd
 
 from subreddit_lens.network.users import symmetrize_graph
+
+
+def _h_index(values: Iterable[int]) -> int:
+    """Largest h such that at least h of the values are >= h."""
+    h = 0
+    for i, value in enumerate(sorted(values, reverse=True), start=1):
+        if value < i:
+            break
+        h = i
+    return h
 
 
 def hindex[N: Hashable](G: nx.Graph[N], node: N) -> int:
@@ -42,17 +52,7 @@ def hindex[N: Hashable](G: nx.Graph[N], node: N) -> int:
     def distinct_degree(n: N) -> int:
         return sum(1 for m in U.neighbors(n) if m != n)
 
-    neighbour_degrees = sorted(
-        (distinct_degree(m) for m in U.neighbors(node) if m != node),
-        reverse=True,
-    )
-    h = 0
-    for i, deg in enumerate(neighbour_degrees, start=1):
-        if deg >= i:
-            h = i
-        else:
-            break
-    return h
+    return _h_index(distinct_degree(m) for m in U.neighbors(node) if m != node)
 
 
 def user_metrics(
@@ -118,6 +118,13 @@ def user_metrics(
     )
     community_of = {n: i for i, members in enumerate(communities) for n in members}
 
+    # Degrees on the undirected projection, computed once: calling hindex()
+    # per user would recompute every neighbour's degree, which is quadratic
+    # in the size of the hubs. H has no self-loops, so degree counts
+    # distinct neighbours.
+    undirected = H.to_undirected(as_view=True)
+    degree = dict(undirected.degree())
+
     rows = []
     for n in nodes:
         successors = set(H.successors(n))
@@ -137,7 +144,7 @@ def user_metrics(
                     else math.nan
                 ),
                 "pagerank": pagerank[n],
-                "hindex": hindex(H, n),
+                "hindex": _h_index(degree[m] for m in undirected.neighbors(n)),
                 "community": community_of.get(n, -1),
             }
         )
