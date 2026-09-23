@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase 5)
+- Command-line interface: `subreddit-lens init | ingest | network | metrics
+  | habits | export | run`, driven by the TOML config, with overrides such
+  as `--data-dir`, `--output-dir`, `--start/--end`, `--timezone`. Errors are
+  reported in one line with exit code 1.
+- `subreddit_lens.pipeline`: `run_ingest`, `run_network`, `run_metrics`,
+  `run_habits`, `run_export`, callable from Python.
+- Output paths on `Config` (`users_graph`, `user_metrics_file`,
+  `habits_file`, `chains_file`, `pairs_file`).
+- `export --preprocess` / `run_export(clean_text=True)`: clean comment text
+  before exporting (raw Reddit bodies contain HTML entities such as `&gt;`).
+
 ### Added (Phase 4)
 - `ingest_archive()`: streams a zstd archive to Parquet in chunks with a
   fixed schema, writing to a temporary file that is renamed on success.
