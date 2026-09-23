@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Hashable
 
 import networkx as nx
+import pandas as pd
+
+from subreddit_lens.network.users import symmetrize_graph
 
 
 def hindex[N: Hashable](G: nx.Graph[N], node: N) -> int:
@@ -49,3 +53,94 @@ def hindex[N: Hashable](G: nx.Graph[N], node: N) -> int:
         else:
             break
     return h
+
+
+def user_metrics(
+    G: nx.DiGraph[str],
+    *,
+    weight: str = "weight",
+    community_seed: int | None = 0,
+) -> pd.DataFrame:
+    """Compute per-user network metrics from a user interaction graph.
+
+    The graph is expected to follow extract_interaction_graph(): an edge
+    u -> v with weight w means u replied w times to v. Self-loops (users
+    replying to themselves) are ignored.
+
+    Columns:
+
+    - replies_sent / replies_received: weighted out- and in-degree.
+    - users_replied_to / repliers: unweighted out- and in-degree.
+    - ego_size: number of distinct users interacted with, either way.
+    - reciprocity: share of those users with replies in both directions
+      (NaN for users with no interactions).
+    - pagerank: weighted PageRank on G. Because edges point from the replier
+      to the user replied to, a user ranks high when they receive replies,
+      especially from users who themselves receive many replies.
+    - hindex: see hindex().
+    - community: Louvain community on the symmetrised graph, numbered by
+      decreasing size (0 is the largest); -1 for users whose only
+      interactions are with themselves.
+
+    Args:
+        G: Directed user interaction graph.
+        weight: Edge attribute holding reply counts.
+        community_seed: Random seed for Louvain, for reproducible
+            communities. None for a random run.
+
+    Returns:
+        DataFrame indexed by username, sorted by decreasing PageRank.
+    """
+    H: nx.DiGraph[str] = nx.DiGraph(G)
+    H.remove_edges_from(list(nx.selfloop_edges(H)))
+    nodes = list(H.nodes)
+    if not nodes:
+        return pd.DataFrame(
+            columns=[
+                "replies_sent",
+                "replies_received",
+                "users_replied_to",
+                "repliers",
+                "ego_size",
+                "reciprocity",
+                "pagerank",
+                "hindex",
+                "community",
+            ]
+        ).rename_axis("author")
+
+    pagerank = nx.pagerank(H, weight=weight)
+    communities = sorted(
+        nx.community.louvain_communities(
+            symmetrize_graph(H), weight=weight, seed=community_seed
+        ),
+        key=lambda c: (-len(c), min(c)),
+    )
+    community_of = {n: i for i, members in enumerate(communities) for n in members}
+
+    rows = []
+    for n in nodes:
+        successors = set(H.successors(n))
+        predecessors = set(H.predecessors(n))
+        neighbours = successors | predecessors
+        rows.append(
+            {
+                "author": n,
+                "replies_sent": H.out_degree(n, weight=weight),
+                "replies_received": H.in_degree(n, weight=weight),
+                "users_replied_to": len(successors),
+                "repliers": len(predecessors),
+                "ego_size": len(neighbours),
+                "reciprocity": (
+                    len(successors & predecessors) / len(neighbours)
+                    if neighbours
+                    else math.nan
+                ),
+                "pagerank": pagerank[n],
+                "hindex": hindex(H, n),
+                "community": community_of.get(n, -1),
+            }
+        )
+    return (
+        pd.DataFrame(rows).set_index("author").sort_values("pagerank", ascending=False)
+    )

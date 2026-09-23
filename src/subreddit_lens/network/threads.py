@@ -10,15 +10,12 @@ from __future__ import annotations
 import networkx as nx
 import pandas as pd
 
+from subreddit_lens.io.schema import strip_type_prefix
+
 # Values of the 'kind' node attribute set by create_nx_graph().
 SUBMISSION = "submission"
 COMMENT = "comment"
 MISSING = "missing"
-
-
-def _strip_prefix(ids: pd.Series) -> pd.Series:
-    """Remove Reddit type prefixes such as 't1_' or 't3_' from IDs."""
-    return ids.str.split("_", n=1).str[-1]
 
 
 def create_nx_graph(df: pd.DataFrame) -> nx.DiGraph[str]:
@@ -52,8 +49,8 @@ def create_nx_graph(df: pd.DataFrame) -> nx.DiGraph[str]:
         allows straightforward DFS/BFS traversal in subreddit_lens.export.
     """
     comment_ids = df["id"]
-    parent_ids = _strip_prefix(df["parent_id"])
-    link_ids = _strip_prefix(df["link_id"])
+    parent_ids = strip_type_prefix(df["parent_id"])
+    link_ids = strip_type_prefix(df["link_id"])
 
     G: nx.DiGraph[str] = nx.DiGraph()
     G.add_nodes_from(link_ids.drop_duplicates(), kind=SUBMISSION)

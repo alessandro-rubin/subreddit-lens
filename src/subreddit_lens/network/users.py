@@ -3,6 +3,10 @@
 In the user interaction graph, nodes are usernames and edges represent reply
 relationships weighted by reply count. It is used for social network analysis
 and PageRank scoring.
+
+Comment and submission IDs are separate sequences on Reddit, so the same ID
+can belong to a comment and to a submission; parents are always resolved by
+their type prefix ('t1_' comment, 't3_' submission).
 """
 
 from __future__ import annotations
@@ -13,26 +17,69 @@ import networkx as nx
 import pandas as pd
 
 from subreddit_lens.constants import DEFAULT_EXCLUDED_AUTHORS
+from subreddit_lens.io.schema import strip_type_prefix
 
 
-def get_parent_author(df: pd.DataFrame) -> pd.DataFrame:
+def _submitter_by_thread(df: pd.DataFrame) -> pd.Series:
+    """Infer each thread's submitter from comments flagged 'is_submitter'."""
+    flagged = df[df["is_submitter"].astype("boolean").fillna(False).astype(bool)]
+    threads = strip_type_prefix(flagged["link_id"])
+    return flagged["author"].groupby(threads.to_numpy()).first()
+
+
+def get_parent_author(
+    df: pd.DataFrame,
+    submissions: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     """Add a 'parent_author' column mapping each comment to its parent's author.
 
-    Looks up each comment's parent_id in the same DataFrame. Comments whose
-    parent is the submission root (parent_id starts with 't3_') will have
-    NaN in 'parent_author' since submissions are not rows in the DataFrame.
+    Replies to comments (parent_id 't1_...') are resolved against the
+    comments in df. Top-level comments (parent_id 't3_...') reply to the
+    submission, so their parent author is the submitter (OP), taken from:
+
+    1. submissions, when given (the reliable source);
+    2. otherwise, comments in the same thread with 'is_submitter' set, when
+       df has that column (the OP is known only if they commented);
+    3. otherwise NaN.
+
+    Parents missing from the data also get NaN.
 
     Args:
         df: DataFrame with at least 'id', 'author', and 'parent_id' columns.
-            The 'parent_id' column must be in Reddit's 'tX_<id>' format.
+            'parent_id' must be in Reddit's 'tX_<id>' format. 'link_id' and
+            'is_submitter' are used for the fallback when present.
+        submissions: Optional DataFrame of submissions with 'id' and
+            'author' columns (e.g. from subreddit_lens.io.load_submissions).
 
     Returns:
         A copy of the input DataFrame with a new 'parent_author' column.
         The original DataFrame is not modified.
     """
     df = df.copy()
-    id_to_author = df.set_index("id")["author"].to_dict()
-    df["parent_author"] = df["parent_id"].str.split("_").str[1].map(id_to_author)
+    parent_ids = df["parent_id"].astype("string")
+    parent_keys = strip_type_prefix(parent_ids)
+    replies_to_comment = parent_ids.str.startswith("t1_").fillna(False)
+    replies_to_submission = parent_ids.str.startswith("t3_").fillna(False)
+
+    comment_authors = df.drop_duplicates("id", keep="last").set_index("id")["author"]
+    parent_author = pd.Series(pd.NA, index=df.index, dtype="object")
+    parent_author[replies_to_comment] = parent_keys[replies_to_comment].map(
+        comment_authors
+    )
+
+    if submissions is not None:
+        op = submissions.drop_duplicates("id", keep="last")
+        op_authors = op.set_index(strip_type_prefix(op["id"]))["author"]
+    elif "is_submitter" in df.columns and "link_id" in df.columns:
+        op_authors = _submitter_by_thread(df)
+    else:
+        op_authors = None
+    if op_authors is not None:
+        parent_author[replies_to_submission] = parent_keys[replies_to_submission].map(
+            op_authors
+        )
+
+    df["parent_author"] = parent_author
     return df
 
 
@@ -50,7 +97,8 @@ def extract_interaction_graph(
         comment_df: DataFrame with at least 'author', 'parent_author', and
             'id' columns. The 'parent_author' column should be pre-computed
             via get_parent_author(). Rows where 'parent_author' is NaN
-            (top-level comments replying to a submission) are dropped.
+            (parent missing from the data, or top-level comment whose
+            submitter is unknown) are dropped.
         exclude_authors: Usernames removed from the graph, both as repliers
             and as reply targets. Defaults to '[deleted]' and
             'AutoModerator'. Pass None to keep every author.

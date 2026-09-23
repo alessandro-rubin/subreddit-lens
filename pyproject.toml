@@ -89,7 +89,7 @@ files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
 # No type information is published for these libraries.
-module = ["plotly.*", "pmaw.*"]
+module = ["plotly.*", "pmaw.*", "pyarrow.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
