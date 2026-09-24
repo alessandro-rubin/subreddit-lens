@@ -29,8 +29,14 @@ posted at 22:30 UTC on 2024-07-01, which is 00:30 on 2024-07-02 in Rome
 (CEST, UTC+2).
 """
 
+import json
+from pathlib import Path
+
 import pandas as pd
 import pytest
+import zstandard as zstd
+
+from subreddit_lens.config import Config, load_config
 
 BASE = int(pd.Timestamp("2024-07-01 22:30", tz="UTC").timestamp())
 
@@ -80,3 +86,31 @@ def submissions_df() -> pd.DataFrame:
 def comments_with_submitter_df(comments_df: pd.DataFrame) -> pd.DataFrame:
     """Comments with the 'is_submitter' flag set by Reddit for OP comments."""
     return comments_df.assign(is_submitter=comments_df["id"] == "c8")
+
+
+def write_archive(path: Path, df: pd.DataFrame) -> None:
+    """Write a DataFrame as a zstd-compressed NDJSON archive."""
+    payload = "\n".join(
+        json.dumps(r, ensure_ascii=False) for r in df.to_dict("records")
+    )
+    path.write_bytes(zstd.ZstdCompressor().compress(payload.encode("utf-8")))
+
+
+@pytest.fixture
+def project(
+    tmp_path: Path, comments_df: pd.DataFrame, submissions_df: pd.DataFrame
+) -> Path:
+    """A project directory with a config file and both archives."""
+    (tmp_path / "data").mkdir()
+    write_archive(tmp_path / "data" / "demo_comments.zst", comments_df)
+    write_archive(tmp_path / "data" / "demo_submissions.zst", submissions_df)
+    (tmp_path / "subreddit-lens.toml").write_text(
+        'subreddit = "demo"\ntimezone = "Europe/Rome"\n', encoding="utf-8"
+    )
+    return tmp_path
+
+
+@pytest.fixture
+def config(project: Path) -> Config:
+    """Configuration of the fixture project (nothing ingested yet)."""
+    return load_config(project / "subreddit-lens.toml")

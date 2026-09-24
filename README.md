@@ -3,7 +3,9 @@
 Explore and analyse user interactions in a subreddit.
 
 `subreddit-lens` is a Python package for working with Reddit comment archives
-(Pushshift / Arctic Shift dumps). It covers three areas:
+(Pushshift / Arctic Shift dumps). Once the data is ingested, you can explore
+it from Python, from the command line, with SQL, or through an AI assistant
+(via the Model Context Protocol, see below). It covers three areas:
 
 1. **Posting habits** -- when users are active (hour of day, weekday, month),
    estimated with periodic kernel density estimation, and how similar users
@@ -35,6 +37,7 @@ Optional features are grouped as extras:
 | `sentiment`  | transformers, torch, datasets, tqdm           | sentiment classification          |
 | `viz`        | matplotlib, seaborn, pyvis                    | static plots, HTML network views  |
 | `som`        | minisom                                       | self-organising maps              |
+| `mcp`        | mcp                                           | serving the data to AI assistants |
 | `legacy`     | pmaw                                          | old Pushshift scraper             |
 | `all`        | everything except `legacy`                    |                                   |
 
@@ -135,6 +138,98 @@ uv run subreddit-lens run --config examples/litigi/subreddit-lens.toml
 
 The same steps are available from Python as `subreddit_lens.pipeline.run_*`.
 
+## Exploring the data
+
+After `ingest`, the explore commands answer common questions directly. They
+query the Parquet files through [DuckDB](https://duckdb.org/), so they are
+fast even on large subreddits and need no other step (PageRank rankings
+also need `network` and `metrics`):
+
+```bash
+uv run subreddit-lens summary                      # counts, time span, busiest times
+uv run subreddit-lens users --by replies_received  # also comments, score, pagerank, ...
+uv run subreddit-lens user some_username           # activity, habits, interlocutors
+uv run subreddit-lens activity --by weekday        # or hour, day, month (local time)
+uv run subreddit-lens threads --by authors         # then: subreddit-lens thread <id>
+uv run subreddit-lens search "avvocato" -n 20
+uv run subreddit-lens interactions --author some_username
+uv run subreddit-lens schema                       # SQL views and columns
+uv run subreddit-lens sql "SELECT author, count(*) AS n FROM comments GROUP BY 1 ORDER BY 2 DESC"
+```
+
+Tables are printed for people; add `--json` for machine-readable output.
+`subreddit-lens guide` prints a short description of the views, the ID
+conventions and example queries.
+
+From Python, `Explorer` offers the same analyses and returns DataFrames:
+
+```python
+from subreddit_lens import Explorer
+
+with Explorer.from_config("subreddit-lens.toml") as ex:
+    ex.summary()
+    ex.top_users("replies_received", n=10)
+    ex.user("some_username")
+    ex.thread("1abc23")
+    ex.sql("""
+        SELECT date_trunc('month', created_at) AS month, count(*) AS comments
+        FROM comments GROUP BY 1 ORDER BY 1
+    """)
+```
+
+The SQL views are `comments`, `submissions`, `replies` (each comment with
+the author it replies to), `users`, `threads`, `user_metrics` (after the
+`metrics` step) and `excluded_authors`. Only single `SELECT` statements are
+accepted, and DuckDB can read only the configured data and output
+directories.
+
+## Use with AI assistants
+
+`subreddit-lens mcp` serves the explore tools over the
+[Model Context Protocol](https://modelcontextprotocol.io/), so an assistant
+such as Claude can answer questions about the subreddit by calling them.
+All tools are read-only; the server also sends the guide as its
+instructions, so the assistant knows the views and conventions without
+reading the code. Install the `mcp` extra (included in the development
+setup), run `ingest` first, and use absolute paths, since the client starts
+the server from its own working directory.
+
+Claude Code:
+
+```bash
+claude mcp add subreddit-lens -- \
+    uv run --directory /path/to/reddit_stuff \
+    subreddit-lens mcp --config /path/to/subreddit-lens.toml
+```
+
+Claude Desktop and other clients that use an `mcpServers` JSON file:
+
+```json
+{
+  "mcpServers": {
+    "subreddit-lens": {
+      "command": "uvx",
+      "args": [
+        "--from", "subreddit-lens[mcp] @ git+https://github.com/alessandro-rubin/reddit_stuff",
+        "subreddit-lens", "mcp", "--config", "/path/to/subreddit-lens.toml"
+      ]
+    }
+  }
+}
+```
+
+Tools: `summary`, `schema`, `top_users`, `user_profile`, `activity`,
+`top_threads`, `thread`, `search`, `interactions`, `run_sql`. Results are
+capped (at most 5,000 rows, comment bodies truncated by default), and
+errors such as a misspelt username come back with suggestions the assistant
+can act on.
+
+An assistant working in a terminal can also use the CLI directly: `guide`
+explains the data and every command accepts `--json`.
+
+Keep in mind that whatever the tools return (usernames, comment text) is
+sent to the assistant's provider.
+
 ## Data
 
 Data files are not part of the repository. Download a subreddit's comments
@@ -160,6 +255,9 @@ in their own thread are missing from the interaction graph.
 ```
 src/subreddit_lens/   the package
     config.py         per-subreddit settings (TOML)
+    explore.py        Explorer: DuckDB views and ready-made analyses
+    guide.py          usage guide shared by the CLI and the MCP server
+    mcp_server.py     MCP server for AI assistants
     io/               zstd archives, schema, chunked ingestion, Parquet readers
     text/             comment text cleaning
     network/          thread graphs, user interaction graphs, metrics, storage

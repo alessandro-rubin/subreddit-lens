@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (exploration and AI access)
+- `Explorer` (`subreddit_lens.explore`): DuckDB views over the ingested
+  Parquet files (`comments`, `submissions`, `replies`, `users`, `threads`,
+  `user_metrics`, `excluded_authors`) and ready-made analyses: `summary`,
+  `top_users`, `user`, `activity`, `top_threads`, `thread`, `search`,
+  `interactions`, plus `sql()` for read-only queries (one SELECT, row
+  limit, file access restricted to the data and output directories).
+  Unknown usernames raise `QueryError` listing similar names.
+- CLI commands `summary`, `users`, `user`, `activity`, `threads`, `thread`,
+  `search`, `interactions`, `sql` and `schema`, with `--json` output.
+- `subreddit-lens guide`: how to explore the data (views, ID conventions,
+  example SQL), for people and AI assistants.
+- `subreddit-lens mcp`: a Model Context Protocol server with one read-only
+  tool per analysis plus `run_sql`, so assistants such as Claude can query
+  the data. Requires the new `mcp` extra.
+- `duckdb` is a core dependency.
+
+### Changed (exploration and AI access)
+- Phase 6 of the roadmap (Streamlit app) is replaced by exploration and AI
+  access; the planned `app` extra and command are dropped.
+
 ### Changed (dependency and performance review)
 - `js_distance_matrix` / `js_similarity` are vectorised with NumPy
   (entropy formulation); same values as SciPy's `jensenshannon` to within

@@ -6,8 +6,15 @@ subreddit_lens provides reusable functions for three analysis areas:
 2. Social network analysis -- user interaction graphs and influence metrics.
 3. Thread export -- conversation chain extraction for language model training.
 
-Subpackages:
+On top of them, Explorer answers common questions (top users, profiles,
+activity, threads, search, SQL) over the ingested data, and the same
+analyses are available from the CLI and an MCP server for AI assistants.
+
+Modules and subpackages:
     config      Per-subreddit settings loaded from a TOML file.
+    explore     Explorer: DuckDB views and ready-made analyses.
+    guide       Usage guide shared by the CLI and the MCP server.
+    mcp_server  MCP server exposing Explorer (needs the 'mcp' extra).
     io          zstd archives, chunked ingestion to Parquet, canonical schema.
     text        Text cleaning for Reddit comments.
     network     Thread graphs, user interaction graphs, metrics, storage.
@@ -20,16 +27,18 @@ Quick start:
 
     from pathlib import Path
 
-    from subreddit_lens import create_nx_graph, extract_thread_chains, load_comments
+    from subreddit_lens import Explorer
 
-    df = load_comments(Path("data/litigi_comments.parquet"))
-    G = create_nx_graph(df)
-    chains = extract_thread_chains(G, df, min_length=2)
+    with Explorer.from_config(Path("subreddit-lens.toml")) as ex:
+        print(ex.summary())
+        print(ex.top_users("replies_received", n=10))
+        print(ex.sql("SELECT count(*) FROM comments"))
 """
 
 from importlib.metadata import PackageNotFoundError, version
 
 from subreddit_lens.config import Config, load_config
+from subreddit_lens.explore import Explorer, QueryError, to_json, to_jsonable
 from subreddit_lens.export import (
     chains_to_prompt_pairs,
     export_chains_to_jsonl,
@@ -75,6 +84,11 @@ __all__ = [
     # config
     "Config",
     "load_config",
+    # explore
+    "Explorer",
+    "QueryError",
+    "to_json",
+    "to_jsonable",
     # io
     "extract_zstd",
     "ingest_archive",

@@ -18,6 +18,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "duckdb>=1.5",
     "networkx>=3.5",
     "numpy>=2.2",
     "pandas>=2.3.1",
@@ -34,7 +35,8 @@ sentiment = ["transformers>=4.55", "torch>=2.8", "datasets>=4.0", "tqdm>=4.67"]
 viz = ["matplotlib>=3.10.5", "pyvis>=0.3.2", "seaborn>=0.13.2"]
 som = ["minisom>=2.3.5"]
 legacy = ["pmaw>=3.0.0"]
-all = ["subreddit-lens[nlp,sentiment,viz,som]"]
+mcp = ["mcp>=2.2,<3"]
+all = ["subreddit-lens[nlp,sentiment,viz,som,mcp]"]
 
 [project.scripts]
 subreddit-lens = "subreddit_lens.cli:app"
@@ -46,6 +48,7 @@ Roadmap = "https://github.com/alessandro-rubin/reddit_stuff/blob/master/docs/ROA
 [dependency-groups]
 dev = [
     "jupyterlab>=4.4",
+    "mcp>=2.2,<3",
     "mypy>=2.3.1",
     "nbstripout>=0.9.1",
     "pandas-stubs>=3.0,<3.1",
