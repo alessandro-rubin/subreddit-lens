@@ -10,7 +10,15 @@ and accepts options that override it. Typical session:
     subreddit-lens habits
     subreddit-lens export
 
-or everything at once with 'subreddit-lens run'.
+or everything at once with 'subreddit-lens run'. Then explore:
+
+    subreddit-lens summary
+    subreddit-lens users --by replies_received
+    subreddit-lens user SOMEONE
+    subreddit-lens sql "SELECT ..."
+
+Exploration commands accept --json for machine-readable output, and
+'subreddit-lens mcp' serves the same analyses to AI assistants over MCP.
 """
 
 import dataclasses
@@ -19,13 +27,15 @@ from collections.abc import Callable
 from datetime import date
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import typer
 import zstandard as zstd
 
 from subreddit_lens import __version__, pipeline
 from subreddit_lens.config import Config, load_config
+from subreddit_lens.explore import Explorer, to_json
+from subreddit_lens.guide import GUIDE
 
 DEFAULT_CONFIG = Path("subreddit-lens.toml")
 
@@ -48,6 +58,48 @@ OutputDirOption = Annotated[
     Path | None,
     typer.Option(help="Override the configured output directory."),
 ]
+
+
+JsonOption = Annotated[
+    bool, typer.Option("--json", help="Print JSON instead of a table.")
+]
+LimitOption = Annotated[int, typer.Option("--n", "-n", min=1, help="Number of rows.")]
+CharsOption = Annotated[
+    int, typer.Option(min=1, help="Maximum characters per comment body.")
+]
+
+PIPELINE = "Pipeline"
+EXPLORE = "Explore"
+AI = "AI assistants"
+
+
+class UserBy(StrEnum):
+    """Rankings accepted by the users command."""
+
+    comments = "comments"
+    submissions = "submissions"
+    threads = "threads"
+    score = "score"
+    replies_received = "replies_received"
+    replies_sent = "replies_sent"
+    pagerank = "pagerank"
+
+
+class Period(StrEnum):
+    """Periods accepted by the activity command."""
+
+    hour = "hour"
+    weekday = "weekday"
+    day = "day"
+    month = "month"
+
+
+class ThreadBy(StrEnum):
+    """Rankings accepted by the threads command."""
+
+    comments = "comments"
+    authors = "authors"
+    recent = "recent"
 
 
 class ExportFormat(StrEnum):
@@ -117,7 +169,7 @@ def version() -> None:
     typer.echo(__version__)
 
 
-@app.command()
+@app.command(rich_help_panel=PIPELINE)
 def init(
     subreddit: Annotated[str, typer.Argument(help="Subreddit name, without r/.")],
     path: ConfigOption = DEFAULT_CONFIG,
@@ -151,7 +203,7 @@ def init(
     typer.echo(f"Wrote {path}. Put {subreddit}_comments.zst in the data directory.")
 
 
-@app.command()
+@app.command(rich_help_panel=PIPELINE)
 def ingest(
     config: ConfigOption = DEFAULT_CONFIG,
     data_dir: DataDirOption = None,
@@ -188,7 +240,7 @@ def ingest(
         typer.echo(f"{result.submissions:,} submissions -> {cfg.submissions_parquet}")
 
 
-@app.command()
+@app.command(rich_help_panel=PIPELINE)
 def network(
     config: ConfigOption = DEFAULT_CONFIG,
     data_dir: DataDirOption = None,
@@ -200,7 +252,7 @@ def network(
     typer.echo(f"User graph -> {path}")
 
 
-@app.command()
+@app.command(rich_help_panel=PIPELINE)
 def metrics(
     config: ConfigOption = DEFAULT_CONFIG,
     output_dir: OutputDirOption = None,
@@ -212,7 +264,7 @@ def metrics(
     typer.echo(f"User metrics -> {path}")
 
 
-@app.command()
+@app.command(rich_help_panel=PIPELINE)
 def habits(
     config: ConfigOption = DEFAULT_CONFIG,
     data_dir: DataDirOption = None,
@@ -235,7 +287,7 @@ def habits(
     typer.echo(f"Posting habits -> {path}")
 
 
-@app.command()
+@app.command(rich_help_panel=PIPELINE)
 def export(
     config: ConfigOption = DEFAULT_CONFIG,
     data_dir: DataDirOption = None,
@@ -273,7 +325,7 @@ def export(
         typer.echo(f"Export -> {path}")
 
 
-@app.command()
+@app.command(rich_help_panel=PIPELINE)
 def run(
     config: ConfigOption = DEFAULT_CONFIG,
     data_dir: DataDirOption = None,
@@ -297,3 +349,186 @@ def run(
         typer.echo(f"[{name}]")
         _run(step)
     typer.echo(f"Done. Outputs in {cfg.output_dir}")
+
+
+# -- exploration ---------------------------------------------------------------
+
+
+def _explorer(config: Path, data_dir: Path | None, output_dir: Path | None) -> Explorer:
+    cfg = _load(config, data_dir=data_dir, output_dir=output_dir)
+    return _run(lambda: Explorer(cfg))
+
+
+def _emit(result: Any, as_json: bool) -> None:
+    """Print a DataFrame as a table (or JSON) and anything else as JSON."""
+    if as_json or not hasattr(result, "to_string"):
+        typer.echo(to_json(result))
+    elif result.empty:
+        typer.echo("(no rows)")
+    else:
+        typer.echo(result.to_string(index=False, max_colwidth=80))
+
+
+@app.command(rich_help_panel=EXPLORE)
+def summary(
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+) -> None:
+    """Overview: counts, time span, busiest times, top commenters (JSON)."""
+    with _explorer(config, data_dir, output_dir) as ex:
+        _emit(_run(ex.summary), as_json=True)
+
+
+@app.command(rich_help_panel=EXPLORE)
+def users(
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+    by: Annotated[UserBy, typer.Option(help="Ranking.")] = UserBy.comments,
+    n: LimitOption = 20,
+    as_json: JsonOption = False,
+) -> None:
+    """Top users by activity, replies or PageRank."""
+    with _explorer(config, data_dir, output_dir) as ex:
+        _emit(_run(lambda: ex.top_users(cast(Any, by.value), n)), as_json)
+
+
+@app.command(rich_help_panel=EXPLORE)
+def user(
+    author: Annotated[str, typer.Argument(help="Username (case-sensitive).")],
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+    max_chars: CharsOption = 300,
+) -> None:
+    """Profile of one user (JSON)."""
+    with _explorer(config, data_dir, output_dir) as ex:
+        _emit(_run(lambda: ex.user(author, max_chars)), as_json=True)
+
+
+@app.command(rich_help_panel=EXPLORE)
+def activity(
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+    by: Annotated[Period, typer.Option(help="Period.")] = Period.hour,
+    author: Annotated[str | None, typer.Option(help="Restrict to one user.")] = None,
+    as_json: JsonOption = False,
+) -> None:
+    """Comments per hour, weekday, day or month (local time)."""
+    with _explorer(config, data_dir, output_dir) as ex:
+        _emit(_run(lambda: ex.activity(cast(Any, by.value), author)), as_json)
+
+
+@app.command(rich_help_panel=EXPLORE)
+def threads(
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+    by: Annotated[ThreadBy, typer.Option(help="Ranking.")] = ThreadBy.comments,
+    n: LimitOption = 20,
+    as_json: JsonOption = False,
+) -> None:
+    """Top threads by comments, authors or recency."""
+    with _explorer(config, data_dir, output_dir) as ex:
+        _emit(_run(lambda: ex.top_threads(cast(Any, by.value), n)), as_json)
+
+
+@app.command(rich_help_panel=EXPLORE)
+def thread(
+    thread_id: Annotated[str, typer.Argument(help="Submission ID.")],
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+    n: LimitOption = 500,
+    max_chars: CharsOption = 300,
+    as_json: JsonOption = False,
+) -> None:
+    """A thread's comments in reading order, with nesting depth."""
+    with _explorer(config, data_dir, output_dir) as ex:
+        _emit(_run(lambda: ex.thread(thread_id, n, max_chars)), as_json)
+
+
+@app.command(rich_help_panel=EXPLORE)
+def search(
+    text: Annotated[str, typer.Argument(help="Text to find (case-insensitive).")],
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+    author: Annotated[str | None, typer.Option(help="Restrict to one user.")] = None,
+    n: LimitOption = 20,
+    max_chars: CharsOption = 300,
+    as_json: JsonOption = False,
+) -> None:
+    """Comments containing a text, newest first."""
+    with _explorer(config, data_dir, output_dir) as ex:
+        _emit(_run(lambda: ex.search(text, n, author, max_chars)), as_json)
+
+
+@app.command(rich_help_panel=EXPLORE)
+def interactions(
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+    author: Annotated[
+        str | None, typer.Option(help="Only pairs involving this user.")
+    ] = None,
+    n: LimitOption = 20,
+    as_json: JsonOption = False,
+) -> None:
+    """Strongest reply relationships between users."""
+    with _explorer(config, data_dir, output_dir) as ex:
+        _emit(_run(lambda: ex.interactions(author, n)), as_json)
+
+
+@app.command(rich_help_panel=EXPLORE)
+def sql(
+    query: Annotated[str, typer.Argument(help="One DuckDB SELECT statement.")],
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+    limit: Annotated[int, typer.Option(min=1, help="Maximum rows.")] = 1000,
+    as_json: JsonOption = False,
+) -> None:
+    """Run a read-only SQL query (see 'schema' for the views)."""
+    with _explorer(config, data_dir, output_dir) as ex:
+        _emit(_run(lambda: ex.sql(query, limit)), as_json)
+
+
+@app.command(rich_help_panel=EXPLORE)
+def schema(
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+) -> None:
+    """List the SQL views and their columns (JSON)."""
+    with _explorer(config, data_dir, output_dir) as ex:
+        _emit(_run(ex.schema), as_json=True)
+
+
+# -- AI assistants -------------------------------------------------------------
+
+
+@app.command(rich_help_panel=AI)
+def guide() -> None:
+    """Print the usage guide for people and AI assistants."""
+    typer.echo(GUIDE)
+
+
+@app.command(rich_help_panel=AI)
+def mcp(
+    config: ConfigOption = DEFAULT_CONFIG,
+    data_dir: DataDirOption = None,
+    output_dir: OutputDirOption = None,
+) -> None:
+    """Serve the exploration tools to AI assistants over MCP (stdio)."""
+    try:
+        from subreddit_lens.mcp_server import build_server
+    except ImportError as exc:
+        raise _fail(
+            "The MCP server needs the 'mcp' extra: "
+            "uv add 'subreddit-lens[mcp]' (or uv sync --extra mcp)."
+        ) from exc
+    with _explorer(config, data_dir, output_dir) as ex:
+        build_server(ex).run("stdio")

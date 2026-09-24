@@ -12,6 +12,10 @@ The three main analysis areas are:
 3. Thread export: extracting Reddit conversation trees as structured data
    (chains and prompt/response pairs, JSONL).
 
+On top of them, `explore.py` (`Explorer`) answers common questions over the
+ingested data with DuckDB, exposed through CLI commands and an MCP server so
+AI assistants can query a subreddit with little setup.
+
 The data source is the Pushshift/Arctic Shift Reddit archive (zstd-compressed
 JSON files).
 
@@ -23,9 +27,20 @@ when completing roadmap items.
 ```
 src/subreddit_lens/
     __init__.py         Exports the public API.
-    cli.py              Typer CLI (`subreddit-lens`): init, ingest, network,
-                        metrics, habits, export, run. Thin wrapper around
-                        pipeline.py.
+    cli.py              Typer CLI (`subreddit-lens`). Pipeline: init,
+                        ingest, network, metrics, habits, export, run
+                        (wrappers around pipeline.py). Explore: summary,
+                        users, user, activity, threads, thread, search,
+                        interactions, sql, schema (wrappers around
+                        Explorer). AI: guide, mcp.
+    explore.py          Explorer: DuckDB views over the Parquet files
+                        (comments, submissions, replies, users, threads,
+                        user_metrics, excluded_authors), ready-made
+                        analyses, sandboxed read-only sql(); to_jsonable.
+    guide.py            GUIDE text: printed by `guide`, sent as the MCP
+                        server instructions.
+    mcp_server.py       build_server(explorer): read-only MCP tools (needs
+                        the `mcp` extra; imported lazily by the CLI).
     pipeline.py         run_ingest/run_network/run_metrics/run_habits/
                         run_export: one step each, driven by a Config.
     config.py           Config dataclass and load_config() (TOML).
@@ -78,23 +93,27 @@ uv run ruff check && uv run ruff format --check
 uv run mypy
 uv run subreddit-lens --help
 uv run subreddit-lens run --config examples/litigi/subreddit-lens.toml
+uv run subreddit-lens summary --config examples/litigi/subreddit-lens.toml
 uv run jupyter lab
 ```
 
 ## Dependencies and extras
 
-Core dependencies are only what `src/subreddit_lens` imports at module level.
-Everything else is an optional extra in `pyproject.toml`:
+Core dependencies are only what `src/subreddit_lens` imports at module level
+(including DuckDB, used by `explore.py`). Everything else is an optional extra
+in `pyproject.toml`:
 
 - `nlp` -- nltk, scikit-learn, stop-words (04, 08)
 - `sentiment` -- transformers, torch, datasets, tqdm (05)
 - `viz` -- matplotlib, seaborn, pyvis (04, 06, 07, 08)
 - `som` -- minisom (08)
+- `mcp` -- mcp, the Model Context Protocol SDK (`subreddit-lens mcp`)
 - `legacy` -- pmaw (01, `subreddit_lens.legacy`)
 - `all` -- all of the above except `legacy`
 
 Development tools (pytest, pytest-cov, ruff, mypy with type stubs,
-pre-commit, nbstripout, jupyterlab) are in the `dev` dependency group. Keep
+pre-commit, nbstripout, jupyterlab, and mcp for the server tests) are in the
+`dev` dependency group. Keep
 `pandas-stubs` and `scipy-stubs` on the same minor version as the installed
 library. Add dependencies with `uv add <pkg>`, `uv add --optional <extra> <pkg>`
 or `uv add --dev <pkg>`. Never use `!pip install` in notebooks.
@@ -140,8 +159,20 @@ platform-specific paths.
 - Coverage must stay at or above 80% (`legacy/` and `viz/` excluded).
 - CLI commands contain no analysis logic: they load the Config, apply
   command-line overrides with `dataclasses.replace`, call a `pipeline.run_*`
-  function and turn `FileNotFoundError`/`ValueError` into a one-line error
-  with exit code 1. New pipeline steps go in `pipeline.py` first.
+  function or an `Explorer` method and turn `FileNotFoundError`/`ValueError`
+  into a one-line error with exit code 1. New pipeline steps go in
+  `pipeline.py` first, new analyses in `explore.py`.
+- Explorer rules: `sql()` accepts exactly one SELECT statement and the
+  DuckDB connection is sandboxed (only data_dir and output_dir are readable,
+  configuration locked); keep it that way. Ready-made analyses return
+  DataFrames (or dicts of them) with comment text HTML-decoded and truncated
+  to `max_chars`. Invalid input raises `QueryError` (a `ValueError`); for
+  unknown usernames it lists similar names.
+- MCP tools are read-only, return `to_jsonable(...)` results, cap sizes, and
+  wrap their body in `_expected_errors()` so `ValueError` and
+  `FileNotFoundError` reach the assistant as a `ToolError` message (the SDK
+  hides the text of other exceptions). When adding a view or analysis, also
+  update `guide.py`, the CLI and the MCP tools.
 - networkx graph classes are generic only for type checkers: annotate them
   as `nx.DiGraph[str]` and add `from __future__ import annotations` to the
   module, since `nx.DiGraph[str]` fails at runtime.

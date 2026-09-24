@@ -101,7 +101,7 @@ any project, and `import subreddit_lens` works from any directory.
         `viz` (pyvis, matplotlib, seaborn; wordcloud later removed),
         `som` (minisom),
         `legacy` (pmaw),
-        `app` (streamlit, added with Phase 6),
+        `app` (streamlit; dropped with the new Phase 6, replaced by `mcp`),
         `all` (everything above).
       - `[dependency-groups] dev`: pytest, ruff, jupyterlab (pytest-cov,
         mypy, pre-commit and nbstripout are added with Phase 3).
@@ -258,7 +258,9 @@ Goal: the package works for any subreddit and handles large archives.
       (per-user counts, edge lists, time series). Keep the pandas API as the
       public interface; use DuckDB internally where it gives a clear speed or
       memory win. Measure on the litigi dataset before committing to it.
-      (Open: needs the real dataset to measure.)
+      (Partly done: `Explorer` uses DuckDB over the Parquet files for all
+      exploration queries. The pipeline steps still use pandas; moving them
+      needs a measurement on the real dataset.)
 - [ ] 4.6 Language-aware text processing: `text/languages/it.py` and `en.py`
       with stopwords and stemmer choice; `preprocess(text, lang=...)`.
       (Open: independent of the rest of Phase 4.)
@@ -298,7 +300,8 @@ Goal: the full pipeline is reproducible without notebooks.
       As implemented: file paths come from the config instead of positional
       arguments (`init`, `ingest`, `network`, `metrics`, `habits`, `export`,
       plus `run` for the whole pipeline). The logic lives in `pipeline.py`
-      so notebooks can call the same steps. `app` arrives with Phase 6.
+      so notebooks can call the same steps. `app` was dropped with the new
+      Phase 6; exploration commands and `mcp` took its place.
 
 - [x] 5.2 Every command accepts `--config FILE` and CLI options override the
       config.
@@ -312,31 +315,46 @@ Acceptance criteria:
 
 ---
 
-## Phase 6 -- Interactive application
+## Phase 6 -- Exploration and AI access
 
-Goal: explore user interactions in a browser.
+Goal: answer questions about a subreddit's data without writing pandas code,
+from Python, the terminal, SQL or an AI assistant. (Replaces the planned
+Streamlit app, which was dropped: a query layer usable by both people and
+assistants gives more for less maintenance.)
 
-- [ ] 6.1 Streamlit app in `src/subreddit_lens/app/` (installed with the `app`
-      extra, launched by `subreddit-lens app`). Pages:
-      - Overview: volume over time, active users, top threads.
-      - User explorer: search a user, see activity profile (hour/weekday
-        heatmap), top interlocutors, ego network, metrics.
-      - Network: interaction graph filtered by date range and minimum edge
-        weight, coloured by community, sized by PageRank.
-      - Thread browser: pick a submission, view the comment tree.
-      - Similarity: users clustered by posting-habit similarity.
-- [ ] 6.2 The app reads precomputed artifacts from Phase 5 (Parquet, GraphML)
-      and caches them with `st.cache_data` / `st.cache_resource`.
-- [ ] 6.3 Large graphs: render only the top-N nodes by PageRank or the
-      selected user's neighbourhood; plain Plotly/pyvis rendering does not
-      scale beyond a few thousand nodes.
-- [ ] 6.4 Pseudonymisation toggle: display hashed usernames (salted hash from
-      the config) for demos and screenshots.
-- [ ] 6.5 Smoke test with `streamlit.testing.v1.AppTest`.
+- [x] 6.1 `Explorer` (`explore.py`): DuckDB views over the Parquet files
+      (`comments`, `submissions`, `replies`, `users`, `threads`,
+      `user_metrics`, `excluded_authors`) and ready-made analyses: summary,
+      top users (including PageRank from the metrics step), user profile,
+      activity by hour/weekday/day/month in local time, top threads, thread
+      in reading order, text search, strongest interactions.
+- [x] 6.2 Read-only SQL: one SELECT per call, row limit, DuckDB sandboxed to
+      the data and output directories with its configuration locked.
+- [x] 6.3 CLI commands for every analysis (`summary`, `users`, `user`,
+      `activity`, `threads`, `thread`, `search`, `interactions`, `sql`,
+      `schema`), tables for people and `--json` for scripts and agents.
+- [x] 6.4 AI access: `subreddit-lens guide` (views, conventions, example
+      SQL) and `subreddit-lens mcp`, an MCP server (`mcp` extra) with one
+      read-only tool per analysis plus `run_sql`, sending the guide as its
+      instructions. Expected errors reach the assistant with actionable
+      messages (e.g. similar usernames).
+- [x] 6.5 Tests on the fixture dataset for the views, analyses, SQL
+      sandbox, CLI and MCP tools (in-process client).
+- [ ] 6.6 Try the MCP server with an assistant on the litigi dataset and
+      refine tool descriptions and defaults from real questions. (Needs the
+      real data.)
+- [ ] 6.7 Pseudonymisation option: hash usernames (salted, from the config)
+      in Explorer results, for demos and for sharing results with hosted
+      assistants.
+- [ ] 6.8 Network views for assistants: a user's ego network and
+      communities as tables (the GraphML is already produced by `network`).
 
 Acceptance criteria:
-- `subreddit-lens app` starts and all pages render on the fixture dataset
-  and on the litigi dataset.
+- After `ingest`, every analysis works from Python, the CLI and MCP on the
+  fixture dataset. (Done.)
+- An assistant connected through MCP can answer "who are the most
+  influential users and what do they talk about?" on the litigi dataset
+  without help. (Pending: 6.6.)
 
 ---
 
@@ -345,7 +363,8 @@ Acceptance criteria:
 - [ ] 7.1 MkDocs Material site with `mkdocstrings[python]` for the API
       reference (generated from the Google-style docstrings).
 - [ ] 7.2 Pages: installation, data sources (Arctic Shift download steps),
-      configuration, CLI reference, app guide, the r/litigi case study,
+      configuration, CLI reference, exploration and MCP guide, the r/litigi
+      case study,
       legal and ethical notes.
 - [ ] 7.3 Publish to GitHub Pages from a CI workflow.
 
@@ -400,6 +419,6 @@ These apply to every phase and must be summarised in the README.
 4. Phase 3.4-3.7 (mypy, pre-commit, CI, coverage)
 5. Phase 4 (data model, submissions, config)
 6. Phase 5 (CLI)
-7. Phase 6 (app)
+7. Phase 6 (exploration and AI access)
 8. Phase 7 (docs)
 9. Phase 8 (rename, first PyPI release)
