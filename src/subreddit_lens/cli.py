@@ -3,7 +3,7 @@
 Every analysis command reads a TOML configuration (see subreddit_lens.config)
 and accepts options that override it. Typical session:
 
-    subreddit-lens init litigi --timezone Europe/Rome --language it
+    subreddit-lens init askhistorians --timezone America/New_York
     subreddit-lens ingest
     subreddit-lens network
     subreddit-lens metrics
@@ -57,6 +57,10 @@ DataDirOption = Annotated[
 OutputDirOption = Annotated[
     Path | None,
     typer.Option(help="Override the configured output directory."),
+]
+ArchiveDirOption = Annotated[
+    Path | None,
+    typer.Option(help="Override the configured archive directory."),
 ]
 
 
@@ -193,6 +197,8 @@ def init(
         f'language = "{language}"\n'
         "# Paths are relative to this file.\n"
         'data_dir = "data"\n'
+        "# Directory with the .zst archives, if not data_dir:\n"
+        '# archive_dir = "archives"\n'
         'output_dir = "output"\n'
         "# Optional inclusive date range (UTC days):\n"
         "# start = 2020-01-01\n"
@@ -200,13 +206,17 @@ def init(
         'exclude_authors = ["[deleted]", "AutoModerator"]\n',
         encoding="utf-8",
     )
-    typer.echo(f"Wrote {path}. Put {subreddit}_comments.zst in the data directory.")
+    typer.echo(
+        f"Wrote {path}. Put {subreddit}_comments.zst in the data directory "
+        "(or set archive_dir)."
+    )
 
 
 @app.command(rich_help_panel=PIPELINE)
 def ingest(
     config: ConfigOption = DEFAULT_CONFIG,
     data_dir: DataDirOption = None,
+    archive_dir: ArchiveDirOption = None,
     start: Annotated[
         str | None, typer.Option(help="First day to keep (YYYY-MM-DD).")
     ] = None,
@@ -225,6 +235,7 @@ def ingest(
     cfg = _load(
         config,
         data_dir=data_dir,
+        archive_dir=archive_dir,
         start=_parse_date(start, "start"),
         end=_parse_date(end, "end"),
     )
@@ -329,6 +340,7 @@ def export(
 def run(
     config: ConfigOption = DEFAULT_CONFIG,
     data_dir: DataDirOption = None,
+    archive_dir: ArchiveDirOption = None,
     output_dir: OutputDirOption = None,
     skip_ingest: Annotated[
         bool,
@@ -336,7 +348,9 @@ def run(
     ] = False,
 ) -> None:
     """Run the whole pipeline: ingest, network, metrics, habits, export."""
-    cfg = _load(config, data_dir=data_dir, output_dir=output_dir)
+    cfg = _load(
+        config, data_dir=data_dir, archive_dir=archive_dir, output_dir=output_dir
+    )
     steps: list[tuple[str, Callable[[], object]]] = [
         ("network", lambda: pipeline.run_network(cfg)),
         ("metrics", lambda: pipeline.run_metrics(cfg)),

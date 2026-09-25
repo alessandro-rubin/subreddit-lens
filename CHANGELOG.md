@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-25
+
+First release on PyPI.
+
+### Added (release preparation)
+- `archive_dir` configuration key and `--archive-dir` option of `ingest` and
+  `run`: the zstd archives can be read from a directory other than
+  `data_dir`, for example one shared with other tools, while the Parquet
+  files are still written to `data_dir`.
+
+### Removed (release preparation)
+- The example notebooks and their configuration. Analyses of a particular
+  subreddit now live in their own projects, which depend on the published
+  package.
+- The `nlp`, `sentiment`, `viz`, `som` and `all` extras: the package never
+  imported those libraries, only the example notebooks did.
+- `jupyterlab` and `nbstripout` from the development tools, and the
+  notebook checks from pre-commit and CI.
+- `subreddit_lens.legacy` (the Pushshift scraper) and the `legacy` extra
+  (`pmaw`): the Pushshift API has been restricted since mid-2023; use
+  the Arctic Shift archives with `ingest_archive()`.
+
+### Fixed (release preparation)
+- `order_by_similarity` (and `plot_similarity_matrix(order=True)`) failed
+  on similarity matrices that are asymmetric by a rounding error, such as
+  sklearn's `rbf_kernel` output.
+
 ### Added (exploration and AI access)
 - `Explorer` (`subreddit_lens.explore`): DuckDB views over the ingested
   Parquet files (`comments`, `submissions`, `replies`, `users`, `threads`,
@@ -38,12 +65,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `generate_graph_figure` draws all edges in one Plotly trace instead of one
   trace per edge (10,000 edges: 0.26 s instead of 2.8 s to build, and far
   faster to render).
-- Example notebooks 03, 06, 07, 08 use `get_parent_author()` instead of a
-  local re-implementation that still had the comment/submission ID
-  collision bug; unused imports removed; undefined `stop` (08) and
-  `df_pivot` (05) defined; a duplicated data-loading cell removed from 08.
-  Includes the `fix/notebooks-load-comments` branch (notebooks 03, 06, 07,
-  08 load data with `load_comments()`).
 
 ### Removed (dependency and performance review)
 - `embeddings` extra (`sentence-transformers`): used by no notebook or
@@ -73,7 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `unpack_zst`: superseded by `ingest_archive`, which streams the archive
   instead of decompressing it to disk, and unused elsewhere.
 - `subreddit_lens.clustering` (`compute_laplacian`, `spectral_embedding`):
-  thin wrappers used only by `08_user_clustering.ipynb`, which now computes
+  thin wrappers used only by an example notebook, which now computed
   the same quantities with NumPy and `sklearn.metrics.pairwise.rbf_kernel`
   (verified to give identical results). `order_by_similarity` moved to
   `subreddit_lens.viz`, next to `plot_similarity_matrix`, and is still
@@ -102,8 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from comments flagged `is_submitter`. **The interaction graph gains the
   replies to post authors.**
 - `Config` and `load_config()` for per-subreddit TOML settings (paths,
-  timezone, language, date range, excluded authors);
-  `examples/litigi/subreddit-lens.toml`.
+  timezone, language, date range, excluded authors).
 - `save_graph()` / `load_graph()` (GraphML).
 - `user_metrics()`: per-user replies sent/received, reciprocity, ego size,
   PageRank, h-index and Louvain community in one DataFrame.
@@ -118,7 +138,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never went below `1 - sqrt(ln 2) ~ 0.17`. It now uses base 2 and is
   bounded in [0, 1]. **Similarity values change**: re-run clustering results.
 - Posting-habit hours were computed in UTC. `compute_posting_habits_pdf` now
-  takes a `tz` argument (the litigi notebooks use `Europe/Rome`) and uses
+  takes a `tz` argument (e.g. `Europe/Rome`) and uses
   fractional hours instead of whole hours.
 - Posting-habit densities are normalised to integrate to 1 on the grid
   instead of being multiplied by 3.
@@ -172,16 +192,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Package renamed from `functions` to `subreddit_lens` and split into
   subpackages (`io`, `text`, `network`, `temporal`, `export`, `clustering`,
   `viz`, `legacy`).
-- Notebooks moved to `examples/litigi/` and `examples/archive/`; they now
-  read and write `data/litigi_comments.parquet` under the repository root.
 - `jupyter` and `sentence-transformers` are no longer core dependencies.
 - `ComputeLaplacian` / `SpectralEmbedding` renamed to `compute_laplacian` /
   `spectral_embedding`.
 - Library code logs through `logging` instead of printing.
-- The litigi notebooks 03, 06 and 08 use `Europe/Rome` local time.
 
 ### Removed
 - `clustering/` git submodule.
 - `environment.yml` (conda); `pyproject.toml` and `uv.lock` are the single
   source of truth.
-- `!pip install` cells and Colab paths from `05_nlp.ipynb`.

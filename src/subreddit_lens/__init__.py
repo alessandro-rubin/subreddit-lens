@@ -21,7 +21,6 @@ Modules and subpackages:
     temporal    KDE-based posting activity analysis, JS similarity.
     export      Thread tree traversal and JSONL export for training data.
     viz         Plotly figures for graphs and similarity matrices.
-    legacy      Pushshift scraper (unsupported, non-functional since 2023).
 
 Quick start:
 

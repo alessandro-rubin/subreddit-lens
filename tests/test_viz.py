@@ -54,3 +54,13 @@ def test_order_by_similarity_keeps_blocks_together() -> None:
     position = {int(item): i for i, item in enumerate(order)}
     assert abs(position[0] - position[1]) == 1
     assert abs(position[2] - position[3]) == 1
+
+
+def test_order_by_similarity_tolerates_rounding_errors() -> None:
+    # As produced by sklearn's rbf_kernel: asymmetric by a rounding error,
+    # which squareform rejects.
+    noisy = BLOCKS.copy()
+    noisy[0, 1] = np.nextafter(noisy[0, 1], 1.0)
+    noisy[3, 3] = np.nextafter(1.0, 0.0)
+    assert not np.array_equal(noisy, noisy.T)
+    assert order_by_similarity(noisy).tolist() == order_by_similarity(BLOCKS).tolist()

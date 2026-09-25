@@ -5,15 +5,16 @@ the configured location and returns the path it wrote. The command-line
 interface (subreddit_lens.cli) is a thin wrapper around these functions, and
 they can be called from notebooks as well.
 
-Steps and their files (for subreddit 'litigi'):
+Steps and their files, for a subreddit <sub> (the archives are read from
+archive_dir instead of data/ when it is set):
 
-    ingest   data/litigi_comments.zst      -> data/litigi_comments.parquet
-             data/litigi_submissions.zst   -> data/litigi_submissions.parquet
-    network  comments (+ submissions)      -> output/litigi_users.graphml
-    metrics  users graph                   -> output/litigi_user_metrics.csv
-    habits   comments                      -> output/litigi_habits.parquet
-    export   comments                      -> output/litigi_threads.jsonl
-                                              output/litigi_pairs.jsonl
+    ingest   data/<sub>_comments.zst      -> data/<sub>_comments.parquet
+             data/<sub>_submissions.zst   -> data/<sub>_submissions.parquet
+    network  comments (+ submissions)     -> output/<sub>_users.graphml
+    metrics  users graph                  -> output/<sub>_user_metrics.csv
+    habits   comments                     -> output/<sub>_habits.parquet
+    export   comments                     -> output/<sub>_threads.jsonl
+                                             output/<sub>_pairs.jsonl
 """
 
 from __future__ import annotations
@@ -89,7 +90,8 @@ def run_ingest(
     """
     _require(
         config.comments_archive,
-        "Download the subreddit's comments dump into the data directory.",
+        "Download the subreddit's comments dump into the archive directory "
+        "(archive_dir, or data_dir if not set).",
     )
     condition = config.date_filter()
     comments = ingest_archive(

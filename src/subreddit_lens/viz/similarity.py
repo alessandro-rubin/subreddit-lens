@@ -21,6 +21,10 @@ def order_by_similarity(similarity_matrix: np.ndarray) -> np.ndarray:
     ordering to the resulting dendrogram. Used by plot_similarity_matrix()
     so that groups of similar items appear as blocks along the diagonal.
 
+    Matrices computed in floating point, such as sklearn's rbf_kernel(), can
+    be asymmetric by a rounding error; the matrix is symmetrised by averaging
+    it with its transpose, and the diagonal is ignored.
+
     Args:
         similarity_matrix: Square symmetric similarity matrix with values in
             [0, 1] and ones on the diagonal.
@@ -28,9 +32,12 @@ def order_by_similarity(similarity_matrix: np.ndarray) -> np.ndarray:
     Returns:
         1-D integer array with the optimal ordering of the rows/columns.
     """
+    similarity = np.asarray(similarity_matrix, dtype=float)
+    dissimilarity = 1 - (similarity + similarity.T) / 2
+    np.fill_diagonal(dissimilarity, 0.0)
     # squareform converts the square matrix into the condensed form expected
     # by hierarchy.linkage.
-    distances = squareform(1 - similarity_matrix)
+    distances = squareform(dissimilarity)
     linkage = hierarchy.linkage(distances, method="average")
     ordered = hierarchy.optimal_leaf_ordering(linkage, distances)
     return hierarchy.leaves_list(ordered)

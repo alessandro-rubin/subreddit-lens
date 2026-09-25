@@ -15,7 +15,6 @@ SUBPACKAGES = [
     "temporal",
     "export",
     "viz",
-    "legacy",
 ]
 
 

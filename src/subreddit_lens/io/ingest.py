@@ -83,7 +83,8 @@ def ingest_archive(
 
     Example:
         >>> ingest_archive(
-        ...     "data/litigi_comments.zst", "data/litigi_comments.parquet"
+        ...     "data/askhistorians_comments.zst",
+        ...     "data/askhistorians_comments.parquet",
         ... )
         1234567
     """
