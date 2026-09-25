@@ -1,5 +1,6 @@
 """Tests for subreddit_lens.pipeline and the command-line interface."""
 
+import dataclasses
 import json
 from pathlib import Path
 
@@ -48,6 +49,18 @@ class TestPipeline:
         assert paths == [config.chains_file, config.pairs_file]
         pairs = config.pairs_file.read_text(encoding="utf-8").splitlines()
         assert len(pairs) == 7
+
+    def test_ingest_from_archive_dir(self, project: Path, config: Config) -> None:
+        raw = project / "raw"
+        (project / "data").rename(raw)
+        config = dataclasses.replace(config, archive_dir=raw)
+        result = pipeline.run_ingest(config)
+        assert (result.comments, result.submissions) == (11, 2)
+        # The Parquet files go to data_dir, not next to the archives.
+        assert config.comments_parquet.parent == project / "data"
+        assert config.comments_parquet.exists()
+        assert config.submissions_parquet.exists()
+        assert sorted(p.suffix for p in raw.iterdir()) == [".zst", ".zst"]
 
     def test_ingest_without_submissions(self, config: Config) -> None:
         config.submissions_archive.unlink()
@@ -135,6 +148,18 @@ class TestCli:
         assert code == 0, output
         assert (other / "demo_threads.jsonl").exists()
 
+    def test_archive_dir_override(self, project: Path) -> None:
+        raw = project / "raw"
+        (project / "data").rename(raw)
+        code, output = invoke(project, "ingest")
+        assert code == 1
+        assert "comments dump" in output
+        code, output = invoke(project, "ingest", "--archive-dir", str(raw))
+        assert code == 0, output
+        assert (project / "data" / "demo_comments.parquet").exists()
+        code, output = invoke(project, "run", "--archive-dir", str(raw))
+        assert code == 0, output
+
     def test_export_format(self, project: Path) -> None:
         invoke(project, "ingest")
         code, output = invoke(project, "export", "--format", "pairs")
@@ -144,13 +169,15 @@ class TestCli:
 
     def test_init(self, tmp_path: Path) -> None:
         path = tmp_path / "conf" / "subreddit-lens.toml"
-        args = ["init", "litigi", "--config", str(path), "--timezone", "Europe/Rome"]
+        args = ["init", "demo", "--config", str(path), "--timezone", "Europe/Rome"]
         result = runner.invoke(app, args)
         assert result.exit_code == 0, result.output
         config = load_config(path)
-        assert config.subreddit == "litigi"
+        assert config.subreddit == "demo"
         assert config.timezone == "Europe/Rome"
         assert config.data_dir == (tmp_path / "conf" / "data").resolve()
+        assert config.archive_dir is None
+        assert "# archive_dir" in path.read_text(encoding="utf-8")
 
         again = runner.invoke(app, args)
         assert again.exit_code == 1
@@ -160,7 +187,7 @@ class TestCli:
     def test_init_rejects_invalid_values(self, tmp_path: Path) -> None:
         result = runner.invoke(
             app,
-            ["init", "r/litigi", "--config", str(tmp_path / "c.toml")],
+            ["init", "r/demo", "--config", str(tmp_path / "c.toml")],
         )
         assert result.exit_code == 1
         assert not (tmp_path / "c.toml").exists()

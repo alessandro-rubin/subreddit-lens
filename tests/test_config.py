@@ -22,10 +22,11 @@ class TestLoadConfig:
         path = write(
             tmp_path,
             """
-            subreddit = "litigi"
+            subreddit = "demo"
             timezone = "Europe/Rome"
             language = "it"
             data_dir = "../data"
+            archive_dir = "../raw"
             output_dir = "out"
             start = 2020-01-01
             end = "2020-12-31"
@@ -33,29 +34,36 @@ class TestLoadConfig:
             """,
         )
         config = load_config(path)
-        assert config.subreddit == "litigi"
+        assert config.subreddit == "demo"
         assert config.data_dir == (tmp_path / "data").resolve()
         assert config.output_dir == (tmp_path / "conf" / "out").resolve()
         assert config.start == date(2020, 1, 1)
         assert config.end == date(2020, 12, 31)
         assert config.exclude_authors == {"[deleted]", "RemindMeBot"}
-        assert config.comments_archive.name == "litigi_comments.zst"
-        assert config.submissions_parquet.name == "litigi_submissions.parquet"
+        # Archives are read from archive_dir, Parquet files go to data_dir.
+        raw = (tmp_path / "raw").resolve()
+        assert config.comments_archive == raw / "demo_comments.zst"
+        assert config.submissions_archive == raw / "demo_submissions.zst"
+        assert config.comments_parquet == config.data_dir / "demo_comments.parquet"
+        assert config.submissions_parquet.name == "demo_submissions.parquet"
 
     def test_defaults(self, tmp_path: Path) -> None:
         config = load_config(write(tmp_path, 'subreddit = "AskItaly"'))
         assert config.timezone == "UTC"
         assert config.exclude_authors == DEFAULT_EXCLUDED_AUTHORS
         assert config.data_dir == (tmp_path / "conf" / "data").resolve()
+        assert config.archive_dir is None
+        assert config.comments_archive.parent == config.data_dir
         assert config.date_filter() is None
 
     @pytest.mark.parametrize(
         "text",
         [
             "subreddit = 123",
-            'subreddit = "litigi"\ndata_dir = 5',
-            'subreddit = "litigi"\nexclude_authors = "AutoModerator"',
-            'subreddit = "litigi"\nexclude_authors = [1, 2]',
+            'subreddit = "demo"\ndata_dir = 5',
+            'subreddit = "demo"\narchive_dir = ["raw"]',
+            'subreddit = "demo"\nexclude_authors = "AutoModerator"',
+            'subreddit = "demo"\nexclude_authors = [1, 2]',
         ],
     )
     def test_wrong_value_types(self, tmp_path: Path, text: str) -> None:
@@ -64,7 +72,7 @@ class TestLoadConfig:
             load_config(write(tmp_path, text))
 
     def test_unknown_key(self, tmp_path: Path) -> None:
-        path = write(tmp_path, 'subreddit = "litigi"\ntimzone = "Europe/Rome"')
+        path = write(tmp_path, 'subreddit = "demo"\ntimzone = "Europe/Rome"')
         with pytest.raises(ValueError, match="timzone"):
             load_config(path)
 
@@ -72,11 +80,11 @@ class TestLoadConfig:
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"subreddit": "r/litigi"},
+        {"subreddit": "r/demo"},
         {"subreddit": "x"},
-        {"subreddit": "litigi", "timezone": "Europe/Atlantis"},
-        {"subreddit": "litigi", "language": "italian"},
-        {"subreddit": "litigi", "start": date(2021, 1, 1), "end": date(2020, 1, 1)},
+        {"subreddit": "demo", "timezone": "Europe/Atlantis"},
+        {"subreddit": "demo", "language": "italian"},
+        {"subreddit": "demo", "start": date(2021, 1, 1), "end": date(2020, 1, 1)},
     ],
 )
 def test_invalid_settings(kwargs: dict[str, object]) -> None:
@@ -85,7 +93,7 @@ def test_invalid_settings(kwargs: dict[str, object]) -> None:
 
 
 def test_date_filter_bounds_are_inclusive_utc_days() -> None:
-    config = Config("litigi", start=date(2024, 7, 1), end=date(2024, 7, 1))
+    config = Config("demo", start=date(2024, 7, 1), end=date(2024, 7, 1))
     in_range = config.date_filter()
     assert in_range is not None
 
@@ -102,7 +110,7 @@ def test_date_filter_bounds_are_inclusive_utc_days() -> None:
 
 
 def test_open_ended_range() -> None:
-    in_range = Config("litigi", start=date(2024, 1, 1)).date_filter()
+    in_range = Config("demo", start=date(2024, 1, 1)).date_filter()
     assert in_range is not None
     assert in_range({"created_utc": 4_000_000_000})
     assert not in_range({"created_utc": 0})

@@ -2,18 +2,20 @@
 
 Example file (subreddit-lens.toml):
 
-    subreddit = "litigi"
-    timezone = "Europe/Rome"
-    language = "it"
-    data_dir = "../../data"        # relative to this file
-    output_dir = "../../output"
+    subreddit = "askhistorians"
+    timezone = "America/New_York"
+    language = "en"
+    data_dir = "data"              # relative to this file
+    archive_dir = "archives"       # optional, default: data_dir
+    output_dir = "output"
     start = 2020-01-01             # optional, inclusive
     end = 2024-12-31               # optional, inclusive
     exclude_authors = ["[deleted]", "AutoModerator", "RemindMeBot"]
 
 Archive and Parquet file names follow the convention used by the
 per-subreddit Pushshift/Arctic Shift dumps: '<subreddit>_comments.zst' and
-'<subreddit>_submissions.zst' in data_dir.
+'<subreddit>_submissions.zst' in archive_dir, which defaults to data_dir.
+The Parquet files are written to data_dir.
 """
 
 import re
@@ -38,8 +40,12 @@ class Config:
 
     Attributes:
         subreddit: Subreddit name without the 'r/' prefix.
-        data_dir: Directory with the input archives and Parquet files.
+        data_dir: Directory with the Parquet files (and the input archives,
+            unless archive_dir is set).
         output_dir: Directory for figures, graphs and exports.
+        archive_dir: Directory with the input zstd archives, or None to read
+            them from data_dir. Set it to read archives shared with other
+            tools without writing next to them.
         timezone: IANA timezone used for time-of-day analyses.
         language: ISO 639-1 code of the subreddit's main language.
         start: First day to include (UTC), or None for no lower bound.
@@ -55,6 +61,7 @@ class Config:
     start: date | None = None
     end: date | None = None
     exclude_authors: frozenset[str] = field(default=DEFAULT_EXCLUDED_AUTHORS)
+    archive_dir: Path | None = None
 
     def __post_init__(self) -> None:
         """Validate the settings.
@@ -73,15 +80,19 @@ class Config:
         if self.start and self.end and self.start > self.end:
             raise ValueError(f"start ({self.start}) is after end ({self.end})")
 
+    def _archive(self, kind: str) -> Path:
+        directory = self.data_dir if self.archive_dir is None else self.archive_dir
+        return directory / f"{self.subreddit}_{kind}.zst"
+
     @property
     def comments_archive(self) -> Path:
-        """Path of the comments zstd archive."""
-        return self.data_dir / f"{self.subreddit}_comments.zst"
+        """Path of the comments zstd archive (in archive_dir, or data_dir)."""
+        return self._archive("comments")
 
     @property
     def submissions_archive(self) -> Path:
-        """Path of the submissions zstd archive."""
-        return self.data_dir / f"{self.subreddit}_submissions.zst"
+        """Path of the submissions zstd archive (in archive_dir, or data_dir)."""
+        return self._archive("submissions")
 
     @property
     def comments_parquet(self) -> Path:
@@ -163,6 +174,7 @@ _TOML_TYPES: dict[str, type] = {
     "subreddit": str,
     "data_dir": str,
     "output_dir": str,
+    "archive_dir": str,
     "timezone": str,
     "language": str,
     "exclude_authors": list,
@@ -172,9 +184,10 @@ _TOML_TYPES: dict[str, type] = {
 def load_config(path: str | Path) -> Config:
     """Load a Config from a TOML file.
 
-    Relative data_dir and output_dir are resolved against the directory that
-    contains the file, so a config works regardless of the current working
-    directory. exclude_authors, when given, replaces the default list.
+    Relative data_dir, output_dir and archive_dir are resolved against the
+    directory that contains the file, so a config works regardless of the
+    current working directory. exclude_authors, when given, replaces the
+    default list.
 
     Args:
         path: Path to the TOML file.
@@ -210,6 +223,8 @@ def load_config(path: str | Path) -> Config:
             kwargs[key] = (base / kwargs[key]).resolve()
         else:
             kwargs[key] = (base / getattr(Config, key)).resolve()
+    if "archive_dir" in kwargs:
+        kwargs["archive_dir"] = (base / kwargs["archive_dir"]).resolve()
     for key in ("start", "end"):
         if key in kwargs:
             kwargs[key] = _as_date(kwargs[key], key)

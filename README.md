@@ -15,58 +15,52 @@ it from Python, from the command line, with SQL, or through an AI assistant
 3. **Thread export** -- conversation trees exported as JSONL chains or
    prompt/response pairs.
 
-The project started as an analysis of r/litigi, an Italian-language
-subreddit; that analysis is kept as a worked example in `examples/litigi/`.
-
-> Status: alpha. The package is being restructured following
-> [docs/ROADMAP.md](docs/ROADMAP.md). The API may change.
+> Status: alpha. The package is being restructured following the
+> [roadmap](https://github.com/alessandro-rubin/reddit_stuff/blob/master/docs/ROADMAP.md).
+> The API may change.
 
 ## Installation
 
-Requires Python 3.13 or later. With [uv](https://docs.astral.sh/uv/):
+Requires Python 3.13 or later.
 
 ```bash
-uv add git+https://github.com/alessandro-rubin/reddit_stuff
+uv add subreddit-lens     # or: pip install subreddit-lens
 ```
 
 Optional features are grouped as extras:
 
-| Extra        | Adds                                          | Used for                          |
-|--------------|-----------------------------------------------|-----------------------------------|
-| `nlp`        | nltk, scikit-learn, stop-words                | word frequencies, TF-IDF, LDA     |
-| `sentiment`  | transformers, torch, datasets, tqdm           | sentiment classification          |
-| `viz`        | matplotlib, seaborn, pyvis                    | static plots, HTML network views  |
-| `som`        | minisom                                       | self-organising maps              |
-| `mcp`        | mcp                                           | serving the data to AI assistants |
-| `legacy`     | pmaw                                          | old Pushshift scraper             |
-| `all`        | everything except `legacy`                    |                                   |
+| Extra        | Adds    | Used for                          |
+|--------------|---------|-----------------------------------|
+| `mcp`        | mcp     | serving the data to AI assistants |
 
 ```bash
-uv add "subreddit-lens[nlp,viz] @ git+https://github.com/alessandro-rubin/reddit_stuff"
+uv add "subreddit-lens[mcp]"
 ```
 
 ## Development setup
 
+With [uv](https://docs.astral.sh/uv/):
+
 ```bash
 git clone https://github.com/alessandro-rubin/reddit_stuff
 cd reddit_stuff
-uv sync --all-extras      # or pick extras: uv sync --extra viz
-uv run pre-commit install # ruff, mypy and nbstripout on every commit
+uv sync --all-extras
+uv run pre-commit install # ruff and mypy on every commit
 uv run pytest --cov
 uv run ruff check && uv run mypy
-uv run jupyter lab        # to run the example notebooks
 ```
 
 ## Quick start
 
-Describe the subreddit in a small TOML file (see
-`examples/litigi/subreddit-lens.toml`):
+Describe the subreddit in a small TOML file (`subreddit-lens init` writes
+one):
 
 ```toml
-subreddit = "litigi"
-timezone = "Europe/Rome"
-language = "it"
+subreddit = "askhistorians"
+timezone = "America/New_York"
+language = "en"
 data_dir = "data"
+# archive_dir = "archives"   # where the .zst archives are, if not data_dir
 ```
 
 Then:
@@ -115,26 +109,23 @@ chains = extract_thread_chains(threads, comments, min_length=2)
 The whole pipeline runs from the terminal, driven by the configuration file:
 
 ```bash
-uv run subreddit-lens init litigi --timezone Europe/Rome --language it
-# put litigi_comments.zst (and optionally litigi_submissions.zst) in data/
+uv run subreddit-lens init askhistorians --timezone America/New_York
+# put askhistorians_comments.zst (and optionally askhistorians_submissions.zst) in data/
 uv run subreddit-lens ingest     # archives -> Parquet (chunked)
-uv run subreddit-lens network    # -> output/litigi_users.graphml
-uv run subreddit-lens metrics    # -> output/litigi_user_metrics.csv
-uv run subreddit-lens habits     # -> output/litigi_habits.parquet
-uv run subreddit-lens export     # -> output/litigi_threads.jsonl, litigi_pairs.jsonl
+uv run subreddit-lens network    # -> output/askhistorians_users.graphml
+uv run subreddit-lens metrics    # -> output/askhistorians_user_metrics.csv
+uv run subreddit-lens habits     # -> output/askhistorians_habits.parquet
+uv run subreddit-lens export     # -> output/askhistorians_threads.jsonl, ..._pairs.jsonl
 ```
 
 `uv run subreddit-lens run` does all of the above in one go (`--skip-ingest`
 reuses existing Parquet files). Every command takes `--config FILE` (default
 `subreddit-lens.toml` in the current directory) and options that override it,
-e.g. `ingest --start 2023-01-01`, `habits --timezone UTC --min-posts 20`,
+e.g. `ingest --start 2023-01-01`, `ingest --archive-dir /shared/archives`,
+`habits --timezone UTC --min-posts 20`,
 `export --format pairs --preprocess --system-prompt "..."`. Add `-v` before
 the command for progress messages, and `--help` after any command for its
-options. For the r/litigi example:
-
-```bash
-uv run subreddit-lens run --config examples/litigi/subreddit-lens.toml
-```
+options.
 
 The same steps are available from Python as `subreddit_lens.pipeline.run_*`.
 
@@ -151,7 +142,7 @@ uv run subreddit-lens users --by replies_received  # also comments, score, pager
 uv run subreddit-lens user some_username           # activity, habits, interlocutors
 uv run subreddit-lens activity --by weekday        # or hour, day, month (local time)
 uv run subreddit-lens threads --by authors         # then: subreddit-lens thread <id>
-uv run subreddit-lens search "avvocato" -n 20
+uv run subreddit-lens search "Byzantine" -n 20
 uv run subreddit-lens interactions --author some_username
 uv run subreddit-lens schema                       # SQL views and columns
 uv run subreddit-lens sql "SELECT author, count(*) AS n FROM comments GROUP BY 1 ORDER BY 2 DESC"
@@ -190,15 +181,15 @@ directories.
 such as Claude can answer questions about the subreddit by calling them.
 All tools are read-only; the server also sends the guide as its
 instructions, so the assistant knows the views and conventions without
-reading the code. Install the `mcp` extra (included in the development
-setup), run `ingest` first, and use absolute paths, since the client starts
-the server from its own working directory.
+reading the code. The server needs the `mcp` extra; run `ingest` first, and
+use absolute paths, since the client starts the server from its own working
+directory.
 
 Claude Code:
 
 ```bash
 claude mcp add subreddit-lens -- \
-    uv run --directory /path/to/reddit_stuff \
+    uvx --from "subreddit-lens[mcp]" \
     subreddit-lens mcp --config /path/to/subreddit-lens.toml
 ```
 
@@ -210,7 +201,7 @@ Claude Desktop and other clients that use an `mcpServers` JSON file:
     "subreddit-lens": {
       "command": "uvx",
       "args": [
-        "--from", "subreddit-lens[mcp] @ git+https://github.com/alessandro-rubin/reddit_stuff",
+        "--from", "subreddit-lens[mcp]",
         "subreddit-lens", "mcp", "--config", "/path/to/subreddit-lens.toml"
       ]
     }
@@ -239,14 +230,15 @@ zstd-compressed NDJSON files and place them in the data directory, named
 after the subreddit:
 
 ```
-data/litigi_comments.zst         -> required
-data/litigi_submissions.zst      -> optional, needed for replies to post authors
-data/litigi_comments.parquet     -> produced by ingest_archive()
-data/litigi_submissions.parquet  -> produced by ingest_archive()
+data/askhistorians_comments.zst         -> required
+data/askhistorians_submissions.zst      -> optional, needed for replies to post authors
+data/askhistorians_comments.parquet     -> produced by ingest_archive()
+data/askhistorians_submissions.parquet  -> produced by ingest_archive()
 ```
 
-`examples/litigi/02_data_loading.ipynb` runs the ingestion for r/litigi.
-Without submissions, the author of a post is inferred from comments that
+If the archives live elsewhere, for example in a directory shared with other
+tools, set `archive_dir` in the configuration: they are read from there and
+the Parquet files are still written to `data_dir`. Without submissions, the author of a post is inferred from comments that
 Reddit flags with `is_submitter`, so replies to authors who never commented
 in their own thread are missing from the interaction graph.
 
@@ -264,11 +256,8 @@ src/subreddit_lens/   the package
     temporal/         posting-habit KDEs and similarity
     export/           thread chains and prompt/response pairs (JSONL)
     viz/              Plotly figures
-    legacy/           old Pushshift scraper (unsupported)
     pipeline.py       pipeline steps driven by the config (used by the CLI)
     cli.py            command-line interface
-examples/litigi/      the r/litigi analysis notebooks (01-09)
-examples/archive/     notebooks for other subreddits
 tests/                pytest suite
 docs/                 roadmap and documentation
 ```
@@ -285,4 +274,4 @@ docs/                 roadmap and documentation
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](https://github.com/alessandro-rubin/reddit_stuff/blob/master/LICENSE).

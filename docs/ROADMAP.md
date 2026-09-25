@@ -2,8 +2,8 @@
 
 This document is the plan for turning this repository into an installable,
 tested Python package and application for exploring user interactions in any
-subreddit. The r/litigi analysis becomes the first worked example rather than
-the whole project.
+subreddit. The original analysis of a single subreddit, first kept as a worked
+example, now lives in a separate project that depends on the package.
 
 Naming conventions used throughout:
 
@@ -79,7 +79,7 @@ any project, and `import subreddit_lens` works from any directory.
           legacy/        pushshift.py (old scraping module)
           cli.py
       tests/
-      examples/litigi/
+      examples/<subreddit>/
       examples/archive/
       docs/
       ```
@@ -111,15 +111,13 @@ any project, and `import subreddit_lens` works from any directory.
       - Remove `jupyter` and `sentence-transformers` from core dependencies.
 - [x] 1.3 Optional imports: modules that need an extra raise a clear
       `ImportError` naming the extra to install
-      (e.g. `pip install subreddit-lens[viz]`).
-- [x] 1.4 Move the notebooks: generic ones into `notebooks/`, r/litigi-specific
-      ones into `examples/litigi/` (all current notebooks are r/litigi-specific,
-      so they all went to `examples/litigi/`). Update all imports from `functions` to
-      `subreddit_lens`.
-- [x] 1.5 Fix the inconsistent notebook paths. Notebooks currently read from
-      `processed_data/itigi_comments_2024.parqet`,
-      `processed_data/itigi_comments_copnsolidated.parqet`,
-      `data/litigi.pickle`, while `CLAUDE.md` says `data/litigi_comments.parquet`.
+      (e.g. `pip install subreddit-lens[mcp]`).
+- [x] 1.4 Move the notebooks: generic ones into `notebooks/`, subreddit-specific
+      ones into `examples/` (all of them were subreddit-specific). Update all
+      imports from `functions` to `subreddit_lens`. (In 0.1.0 the examples
+      moved out of the repository altogether.)
+- [x] 1.5 Fix the inconsistent notebook paths (three different files, two of
+      them misspelt, for the same data, and a fourth name in `CLAUDE.md`).
       Use one configurable data directory and correct file names.
 - [x] 1.6 Remove `!pip install` cells from `05_nlp.ipynb` and the Colab paths;
       remove local re-definitions of library functions (e.g. `hindex` in
@@ -151,7 +149,7 @@ first or together with this phase).
       (Done as an addition: `js_distance_matrix` is new and `js_similarity`
       is kept as `1 - js_distance_matrix` so existing code keeps working.)
 - [x] 2.2 Posting habits timezone: convert `created_utc` to a configurable
-      timezone (default `UTC`, `Europe/Rome` for the litigi example) before
+      timezone (default `UTC`, e.g. `Europe/Rome` for an Italian subreddit) before
       extracting hours, so DST is handled correctly.
 - [x] 2.3 Posting habits performance: replace the per-author boolean filter
       (O(authors x rows)) with a single `groupby("author")`. Add a
@@ -187,7 +185,7 @@ first or together with this phase).
 Acceptance criteria:
 - Every item above has at least one test that fails on the old code and
   passes on the new code. (Verified: 24 new tests fail on the Phase 1 code.)
-- Results on the litigi example are recomputed and the differences are noted
+- Results on real data are recomputed and the differences are noted
   in `CHANGELOG.md`. (Pending: needs the real data; the expected direction
   of each change is already listed in `CHANGELOG.md`.)
 
@@ -205,10 +203,9 @@ Goal: every change is automatically linted, type-checked and tested.
       JSONL) on the fixture.
 - [x] 3.3 `ruff` for lint and format (rule sets: `E`, `F`, `I`, `UP`, `B`,
       `SIM`, `D` with Google convention, `NPY`, `PD`), on `src/` and `tests/`.
-- [ ] 3.3b Lint the example notebooks (remove `examples` from ruff's
-      `extend-exclude`). They currently have unused imports and undefined
-      names left from Colab-era cell reordering (`stop` in 08, `df_pivot`
-      in 05); fix them with a clean top-to-bottom re-run on real data.
+- [x] 3.3b Lint the example notebooks. Obsolete: after a clean re-run on
+      real data, the notebooks moved out of the repository in 0.1.0, and
+      ruff no longer excludes anything.
 - [x] 3.4 `mypy --strict` on `src/` (or `ty` once it is stable enough).
       Done on `src/` and `tests/`, with pandas, scipy and networkx stubs
       pinned to the installed library versions.
@@ -220,12 +217,12 @@ Goal: every change is automatically linted, type-checked and tested.
       `mypy`, `pytest --cov`. Matrix on Python 3.13 (add 3.12 if you decide to
       lower `requires-python`). As implemented (`.github/workflows/ci.yml`):
       `uv sync --locked` without extras, since the tests do not need them
-      and the `sentiment` extra pulls in PyTorch; also builds the package
-      and checks that notebooks have no outputs. Runs on pushes to `master`
-      and on pull requests.
-- [x] 3.7 Coverage target: 80% on `src/subreddit_lens` (excluding `legacy/`
-      and `viz/`). Enforced by `fail_under` in `pyproject.toml`; currently
-      98% with branch coverage.
+      (the dev group includes mcp for the server tests); also builds the
+      package. The check that notebooks have no outputs went with the
+      notebooks in 0.1.0. Runs on pushes to `master` and on pull requests.
+- [x] 3.7 Coverage target: 80% on `src/subreddit_lens` (excluding `viz/`;
+      `legacy/` was excluded until its removal in 0.1.0). Enforced by
+      `fail_under` in `pyproject.toml`; currently 97% with branch coverage.
 
 Acceptance criteria:
 - CI is green on the default branch. (Green on pull request #1; the first
@@ -257,7 +254,7 @@ Goal: the package works for any subreddit and handles large archives.
 - [ ] 4.5 Evaluate DuckDB (or Polars) for aggregation queries on Parquet
       (per-user counts, edge lists, time series). Keep the pandas API as the
       public interface; use DuckDB internally where it gives a clear speed or
-      memory win. Measure on the litigi dataset before committing to it.
+      memory win. Measure on a real dataset before committing to it.
       (Partly done: `Explorer` uses DuckDB over the Parquet files for all
       exploration queries. The pipeline steps still use pandas; moving them
       needs a measurement on the real dataset.)
@@ -273,8 +270,8 @@ Goal: the package works for any subreddit and handles large archives.
       per-user metrics DataFrame. Done: `user_metrics()`.
 
 Acceptance criteria:
-- The full pipeline runs on at least two subreddits (r/litigi plus one
-  English-language subreddit) using only a config file. (Pending: needs
+- The full pipeline runs on at least two subreddits (in different
+  languages) using only a config file. (Pending: needs
   real data; becomes a single command with Phase 5.)
 - Peak memory during ingestion stays bounded regardless of archive size.
   (By construction: at most chunk_size records are held in memory; tested
@@ -340,7 +337,7 @@ assistants gives more for less maintenance.)
       messages (e.g. similar usernames).
 - [x] 6.5 Tests on the fixture dataset for the views, analyses, SQL
       sandbox, CLI and MCP tools (in-process client).
-- [ ] 6.6 Try the MCP server with an assistant on the litigi dataset and
+- [ ] 6.6 Try the MCP server with an assistant on a real dataset and
       refine tool descriptions and defaults from real questions. (Needs the
       real data.)
 - [ ] 6.7 Pseudonymisation option: hash usernames (salted, from the config)
@@ -353,7 +350,7 @@ Acceptance criteria:
 - After `ingest`, every analysis works from Python, the CLI and MCP on the
   fixture dataset. (Done.)
 - An assistant connected through MCP can answer "who are the most
-  influential users and what do they talk about?" on the litigi dataset
+  influential users and what do they talk about?" on a real dataset
   without help. (Pending: 6.6.)
 
 ---
@@ -363,8 +360,7 @@ Acceptance criteria:
 - [ ] 7.1 MkDocs Material site with `mkdocstrings[python]` for the API
       reference (generated from the Google-style docstrings).
 - [ ] 7.2 Pages: installation, data sources (Arctic Shift download steps),
-      configuration, CLI reference, exploration and MCP guide, the r/litigi
-      case study,
+      configuration, CLI reference, exploration and MCP guide, a case study,
       legal and ethical notes.
 - [ ] 7.3 Publish to GitHub Pages from a CI workflow.
 
@@ -380,8 +376,9 @@ Acceptance criteria:
       Do this between working sessions, since tools scoped to the old name
       may lose access.
 - [ ] 8.2 Update README badges, `[project.urls]` and docs URLs.
-- [ ] 8.3 Versioning: SemVer; start at `0.1.0`. Keep `CHANGELOG.md` in the
-      "Keep a Changelog" format.
+- [x] 8.3 Versioning: SemVer; start at `0.1.0`. Keep `CHANGELOG.md` in the
+      "Keep a Changelog" format. (0.1.0 is the first release, published by
+      hand with `uv publish`; 8.4 automates later releases.)
 - [ ] 8.4 Release workflow: on tag `v*`, `uv build` and publish to PyPI with
       trusted publishing (OIDC, no API token stored in secrets). Test on
       TestPyPI first.
@@ -396,8 +393,8 @@ Acceptance criteria:
 
 These apply to every phase and must be summarised in the README.
 
-- Reddit usernames are pseudonymous personal data; users of r/litigi are
-  mostly in the EU, so GDPR applies. Do not redistribute raw dumps; offer
+- Reddit usernames are pseudonymous personal data; for users in the EU the
+  GDPR applies. Do not redistribute raw dumps; offer
   hashed usernames in anything published (screenshots, datasets, demos).
 - Reddit's User Agreement and Data API Terms restrict using Reddit content to
   train machine-learning models without an agreement with Reddit. Obtaining
@@ -405,8 +402,9 @@ These apply to every phase and must be summarised in the README.
   Check the current terms before using or distributing the output of the
   thread export beyond personal research, and state this in the docs of the
   `export` module.
-- The `legacy/pushshift.py` scraper is kept for reference only and should be
-  documented as unsupported.
+- The `legacy/pushshift.py` scraper (the Pushshift API has been restricted
+  since mid-2023) was removed in 0.1.0 with the `legacy` extra; data comes
+  from the Arctic Shift archives.
 
 ---
 

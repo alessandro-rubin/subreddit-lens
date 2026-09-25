@@ -17,11 +17,11 @@ Typical usage:
     from subreddit_lens.network import create_nx_graph
     from subreddit_lens.export import extract_thread_chains, export_chains_to_jsonl
 
-    df = load_comments(Path("data/litigi_comments.parquet"))
+    df = load_comments(Path("data/askhistorians_comments.parquet"))
     G = create_nx_graph(df)
 
     chains = extract_thread_chains(G, df, min_length=2)
-    export_chains_to_jsonl(chains, Path("output/litigi_threads.jsonl"))
+    export_chains_to_jsonl(chains, Path("output/askhistorians_threads.jsonl"))
 """
 
 from __future__ import annotations
@@ -214,10 +214,10 @@ def chains_to_prompt_pairs(
 
     Example:
         >>> pairs = chains_to_prompt_pairs(
-        ...     chains, system_prompt="Sei un utente di r/litigi."
+        ...     chains, system_prompt="You post on r/askhistorians."
         ... )
         >>> pairs[0]
-        {'system': 'Sei un utente di r/litigi.', 'user': '...', 'assistant': '...'}
+        {'system': 'You post on r/askhistorians.', 'user': '...', 'assistant': '...'}
     """
     pairs: list[PromptPair] = []
     # A reply has exactly one parent, so its comment ID identifies the pair.

@@ -1,8 +1,8 @@
 # subreddit-lens -- subreddit interaction analysis toolkit
 
 Python package (`subreddit_lens`) for exploring and analysing user interactions
-in a subreddit, built on Reddit comment archives. It started as an analysis of
-r/litigi, an Italian-language subreddit, which is kept as a worked example.
+in a subreddit, built on Reddit comment archives. Published on PyPI as
+`subreddit-lens`.
 
 The three main analysis areas are:
 
@@ -55,29 +55,12 @@ src/subreddit_lens/
     export/             threads.py: thread chains, prompt pairs, JSONL export.
     viz/                graphs.py (network figure), similarity.py (heatmap,
                         order_by_similarity).
-    legacy/             pushshift.py: old scraper, unsupported.
     constants.py        Default excluded authors, removed-comment bodies.
 tests/                  pytest suite; conftest.py holds the synthetic
                         fixture dataset (two threads, documented inline).
-examples/litigi/        r/litigi notebooks, pipeline steps 01-09.
-examples/archive/       Notebooks for other subreddits, not maintained.
 docs/                   ROADMAP.md and future documentation.
 data/                   Input data files (gitignored -- add files manually).
 output/                 Generated figures, exported JSONL, HTML visualisations.
-```
-
-Example notebooks (`examples/litigi/`):
-
-```
-01_scraping.ipynb          Data collection (legacy Pushshift, non-functional).
-02_data_loading.ipynb      zstd to Parquet conversion.
-03_eda.ipynb               Exploratory temporal analysis.
-04_word_frequency.ipynb    NLTK word frequency (Italian NLP).
-05_nlp.ipynb               Sentiment analysis with transformers.
-06_posting_habits.ipynb    Per-user posting patterns.
-07_network_analysis.ipynb  Interaction graphs, PageRank.
-08_user_clustering.ipynb   TF-IDF and spectral clustering.
-09_thread_export.ipynb     Conversation chain export.
 ```
 
 ## Setup
@@ -86,67 +69,60 @@ This project uses [uv](https://docs.astral.sh/uv/) and requires Python 3.13.
 
 ```bash
 uv sync                   # core + dev group
-uv sync --all-extras      # everything used by the example notebooks
-uv run pre-commit install  # once: ruff, mypy, nbstripout on every commit
+uv sync --all-extras      # also the mcp extra
+uv run pre-commit install  # once: ruff and mypy on every commit
 uv run pytest --cov
 uv run ruff check && uv run ruff format --check
 uv run mypy
 uv run subreddit-lens --help
-uv run subreddit-lens run --config examples/litigi/subreddit-lens.toml
-uv run subreddit-lens summary --config examples/litigi/subreddit-lens.toml
-uv run jupyter lab
+uv run subreddit-lens run --config path/to/subreddit-lens.toml
+uv run subreddit-lens summary --config path/to/subreddit-lens.toml
+uv build                  # wheel and sdist in dist/
 ```
 
 ## Dependencies and extras
 
 Core dependencies are only what `src/subreddit_lens` imports at module level
-(including DuckDB, used by `explore.py`). Everything else is an optional extra
-in `pyproject.toml`:
+(including DuckDB, used by `explore.py`). Optional extras in `pyproject.toml`
+cover the modules that need more:
 
-- `nlp` -- nltk, scikit-learn, stop-words (04, 08)
-- `sentiment` -- transformers, torch, datasets, tqdm (05)
-- `viz` -- matplotlib, seaborn, pyvis (04, 06, 07, 08)
-- `som` -- minisom (08)
 - `mcp` -- mcp, the Model Context Protocol SDK (`subreddit-lens mcp`)
-- `legacy` -- pmaw (01, `subreddit_lens.legacy`)
-- `all` -- all of the above except `legacy`
+
+Libraries used only by an analysis built on top of the package (plotting,
+NLP, sentiment models) belong in that analysis project, not here.
 
 Development tools (pytest, pytest-cov, ruff, mypy with type stubs,
-pre-commit, nbstripout, jupyterlab, and mcp for the server tests) are in the
-`dev` dependency group. Keep
-`pandas-stubs` and `scipy-stubs` on the same minor version as the installed
-library. Add dependencies with `uv add <pkg>`, `uv add --optional <extra> <pkg>`
-or `uv add --dev <pkg>`. Never use `!pip install` in notebooks.
+pre-commit, and mcp for the server tests) are in the `dev` dependency group.
+Keep `pandas-stubs` and `scipy-stubs` on the same minor version as the
+installed library. Add dependencies with `uv add <pkg>`,
+`uv add --optional <extra> <pkg>` or `uv add --dev <pkg>`.
 
 ## Data
 
 Data files are gitignored and must be added manually. Inputs are
-zstandard-compressed newline-delimited JSON dumps named after the subreddit:
+zstandard-compressed newline-delimited JSON dumps named after the subreddit,
+in `archive_dir` (default: `data_dir`):
 
-    data/litigi_comments.zst       (required)
-    data/litigi_submissions.zst    (optional)
+    <subreddit>_comments.zst       (required)
+    <subreddit>_submissions.zst    (optional)
 
 `ingest_archive()` streams them to Parquet in chunks, normalised to the
 canonical schema in `io/schema.py` (`id` without type prefix, `parent_id` and
-`link_id` with it). `examples/litigi/02_data_loading.ipynb` does this for
-r/litigi using `examples/litigi/subreddit-lens.toml`. The other notebooks
-read:
+`link_id` with it), and the pipeline writes the results to `data_dir`:
 
-    data/litigi_comments.parquet
-    data/litigi_submissions.parquet
+    <subreddit>_comments.parquet
+    <subreddit>_submissions.parquet
 
 Comment and submission IDs are separate sequences on Reddit and can
 coincide: always resolve a parent through its type prefix, never by bare ID.
 
-Notebooks locate the repository root by searching upwards for
-`pyproject.toml` and build `DATA_DIR` / `OUTPUT_DIR` from it, so they work
-regardless of the Jupyter working directory. Do not use absolute or
-platform-specific paths.
-
 ## Development Guidelines
 
-- All reusable logic belongs in `src/subreddit_lens/`. Notebooks import from
-  `subreddit_lens` rather than defining their own implementations.
+- All reusable logic belongs in `src/subreddit_lens/`.
+- The repository holds no analyses of specific subreddits: examples in
+  docstrings, docs and tests use neutral names (`askhistorians`, `demo`).
+  Analyses of a particular subreddit live in separate projects that depend on
+  the published package.
 - Docstrings follow Google style (Args / Returns / Raises / Example sections).
 - All functions must have type annotations.
 - Use `pathlib.Path` for all file paths.
@@ -154,9 +130,9 @@ platform-specific paths.
   when broadly useful, from `subreddit_lens/__init__.py` (`__all__`).
 - Every change to `src/` needs tests in `tests/`.
 - Code must pass `ruff check`, `ruff format --check` and `mypy` (strict,
-  on `src/` and `tests/`). The `examples/` directory is currently excluded
-  from ruff. CI (`.github/workflows/ci.yml`) runs the same checks.
-- Coverage must stay at or above 80% (`legacy/` and `viz/` excluded).
+  on `src/` and `tests/`). CI (`.github/workflows/ci.yml`) runs the same
+  checks and builds the package.
+- Coverage must stay at or above 80% (`viz/` excluded).
 - CLI commands contain no analysis logic: they load the Config, apply
   command-line overrides with `dataclasses.replace`, call a `pipeline.run_*`
   function or an `Explorer` method and turn `FileNotFoundError`/`ValueError`
@@ -177,27 +153,21 @@ platform-specific paths.
   as `nx.DiGraph[str]` and add `from __future__ import annotations` to the
   module, since `nx.DiGraph[str]` fails at runtime.
 - No emojis in code, docstrings, or documentation.
-- Notebooks are committed without outputs (they may contain usernames and
-  comment text); the nbstripout pre-commit hook and CI enforce this.
+- Releases: bump `version` in `pyproject.toml`, move the `[Unreleased]`
+  section of `CHANGELOG.md` under the new version, `uv build`, then
+  `uv publish` (needs a PyPI token). A version number cannot be reused on
+  PyPI.
 
 ## Known Issues
 
-- `01_scraping.ipynb` and `subreddit_lens.legacy` use the Pushshift API, which
-  has been heavily restricted since mid-2023. Use Arctic Shift archives and
-  `subreddit_lens.io.extract_zstd()` instead.
 - Replies to submission authors are only complete when submissions are
   loaded (`get_parent_author(comments, submissions)`). Without them, the
   author of a post is inferred from comments flagged `is_submitter`.
-- `07_network_analysis.ipynb` computes PageRank on `G.reverse()`, which ranks
-  users who reply to popular users; `user_metrics()` uses `G`, which ranks
-  users who receive replies.
+- `user_metrics()` computes PageRank on the reply graph `G` (edges from the
+  replier to the replied-to), which ranks users who receive replies;
+  PageRank on `G.reverse()` would rank users who reply to popular users.
 - By default `[deleted]` and `AutoModerator` are excluded from per-user
   analyses (`subreddit_lens.constants.DEFAULT_EXCLUDED_AUTHORS`).
-- `06_posting_habits.ipynb` uses `sentiment` and `num_words` columns that
-  only exist in the output of `05_nlp.ipynb` (`output/out_sentiment.pickle`),
-  not in the Parquet file.
-- The example notebooks have not been re-run end to end on real data since
-  the restructuring (except 02 and 09 on synthetic data).
 
 ## Thread Export
 
@@ -212,15 +182,14 @@ from subreddit_lens.export import (
     extract_thread_chains,
 )
 
-df = load_comments(Path("data/litigi_comments.parquet"))
+df = load_comments(Path("data/askhistorians_comments.parquet"))
 G = create_nx_graph(df)
 
 chains = extract_thread_chains(G, df, min_length=2)
-export_chains_to_jsonl(chains, Path("output/litigi_threads.jsonl"))
+export_chains_to_jsonl(chains, Path("output/askhistorians_threads.jsonl"))
 
-pairs = chains_to_prompt_pairs(chains, system_prompt="Sei un utente di r/litigi.")
-export_prompt_pairs_to_jsonl(pairs, Path("output/litigi_pairs.jsonl"))
+pairs = chains_to_prompt_pairs(chains, system_prompt="You post on r/askhistorians.")
+export_prompt_pairs_to_jsonl(pairs, Path("output/askhistorians_pairs.jsonl"))
 ```
 
-See `examples/litigi/09_thread_export.ipynb` for a complete walkthrough.
 Check Reddit's current terms before using exported data to train models.

@@ -16,11 +16,6 @@ repos:
   # the editor always agree.
   - repo: local
     hooks:
-      - id: nbstripout
-        name: nbstripout (remove notebook outputs)
-        entry: uv run nbstripout
-        language: system
-        types: [jupyter]
       - id: ruff-check
         name: ruff check
         entry: uv run ruff check --fix
