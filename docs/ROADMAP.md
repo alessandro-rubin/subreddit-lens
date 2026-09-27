@@ -368,14 +368,14 @@ Acceptance criteria:
 
 ## Phase 8 -- Rename and release
 
-- [ ] 8.1 Rename the GitHub repository to `subreddit-lens`
+- [x] 8.1 Rename the GitHub repository to `subreddit-lens`
       (Settings -> General -> Repository name). GitHub redirects the old web
       and git URLs, but the redirect breaks if a new repository named
       `reddit_stuff` is created later. Update local clones with
       `git remote set-url origin https://github.com/alessandro-rubin/subreddit-lens.git`.
       Do this between working sessions, since tools scoped to the old name
       may lose access.
-- [ ] 8.2 Update README badges, `[project.urls]` and docs URLs.
+- [x] 8.2 Update README badges, `[project.urls]` and docs URLs.
 - [x] 8.3 Versioning: SemVer; start at `0.1.0`. Keep `CHANGELOG.md` in the
       "Keep a Changelog" format. (0.1.0 is the first release, published by
       hand with `uv publish`; 8.4 automates later releases.)

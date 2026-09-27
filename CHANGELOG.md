@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The GitHub repository is now `alessandro-rubin/subreddit-lens` (was
+  `reddit_stuff`); the project URLs and the README point to the new name,
+  and the README shows PyPI, CI and license badges. The old URLs redirect.
+
 ## [0.1.0] - 2026-09-25
 
 First release on PyPI.

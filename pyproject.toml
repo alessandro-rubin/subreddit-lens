@@ -36,9 +36,9 @@ mcp = ["mcp>=2.2,<3"]
 subreddit-lens = "subreddit_lens.cli:app"
 
 [project.urls]
-Repository = "https://github.com/alessandro-rubin/reddit_stuff"
-Changelog = "https://github.com/alessandro-rubin/reddit_stuff/blob/master/CHANGELOG.md"
-Roadmap = "https://github.com/alessandro-rubin/reddit_stuff/blob/master/docs/ROADMAP.md"
+Repository = "https://github.com/alessandro-rubin/subreddit-lens"
+Changelog = "https://github.com/alessandro-rubin/subreddit-lens/blob/master/CHANGELOG.md"
+Roadmap = "https://github.com/alessandro-rubin/subreddit-lens/blob/master/docs/ROADMAP.md"
 
 [dependency-groups]
 dev = [
