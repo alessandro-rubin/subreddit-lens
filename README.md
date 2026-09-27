@@ -1,5 +1,10 @@
 # subreddit-lens
 
+[![PyPI](https://img.shields.io/pypi/v/subreddit-lens)](https://pypi.org/project/subreddit-lens/)
+[![Python](https://img.shields.io/pypi/pyversions/subreddit-lens)](https://pypi.org/project/subreddit-lens/)
+[![CI](https://github.com/alessandro-rubin/subreddit-lens/actions/workflows/ci.yml/badge.svg)](https://github.com/alessandro-rubin/subreddit-lens/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/pypi/l/subreddit-lens)](https://github.com/alessandro-rubin/subreddit-lens/blob/master/LICENSE)
+
 Explore and analyse user interactions in a subreddit.
 
 `subreddit-lens` is a Python package for working with Reddit comment archives
@@ -16,7 +21,7 @@ it from Python, from the command line, with SQL, or through an AI assistant
    prompt/response pairs.
 
 > Status: alpha. The package is being restructured following the
-> [roadmap](https://github.com/alessandro-rubin/reddit_stuff/blob/master/docs/ROADMAP.md).
+> [roadmap](https://github.com/alessandro-rubin/subreddit-lens/blob/master/docs/ROADMAP.md).
 > The API may change.
 
 ## Installation
@@ -42,8 +47,8 @@ uv add "subreddit-lens[mcp]"
 With [uv](https://docs.astral.sh/uv/):
 
 ```bash
-git clone https://github.com/alessandro-rubin/reddit_stuff
-cd reddit_stuff
+git clone https://github.com/alessandro-rubin/subreddit-lens
+cd subreddit-lens
 uv sync --all-extras
 uv run pre-commit install # ruff and mypy on every commit
 uv run pytest --cov
@@ -274,4 +279,4 @@ docs/                 roadmap and documentation
 
 ## License
 
-MIT, see [LICENSE](https://github.com/alessandro-rubin/reddit_stuff/blob/master/LICENSE).
+MIT, see [LICENSE](https://github.com/alessandro-rubin/subreddit-lens/blob/master/LICENSE).
